@@ -12,6 +12,22 @@ export interface EbirdHotspot {
   numSpeciesAllTime?: number;
 }
 
+export interface EbirdObservation {
+  speciesCode: string;
+  comName: string;
+  sciName: string;
+  locId: string;
+  locName: string;
+  obsDt: string;
+  howMany?: number;
+  lat: number;
+  lng: number;
+  obsValid: boolean;
+  obsReviewed: boolean;
+  locationPrivate: boolean;
+  subId: string;
+}
+
 export interface SavedPoint {
   id: string;
   name: string;
