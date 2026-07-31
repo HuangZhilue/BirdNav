@@ -285,10 +285,12 @@ function RouteDisplay({ routePoints, onClear }: { routePoints: SavedPoint[], onC
 
 function BirdHotspots({ 
   onSelectHotspot,
-  savedEbirdLocIds
+  savedEbirdLocIds,
+  highlightedLocIds
 }: { 
   onSelectHotspot: (hotspot: EbirdHotspot) => void;
   savedEbirdLocIds: string[];
+  highlightedLocIds: Set<string> | null;
 }) {
   const { cachedHotspots, hotspotFilterDays, showSavedHotspotsOnly } = useStore();
 
@@ -314,11 +316,15 @@ function BirdHotspots({
         const gcj = wgs84ToGcj02(h.lat, h.lng);
         const colorCategory = getHotspotColorCategory(h.latestObsDt);
 
+        const isHighlighted = highlightedLocIds ? highlightedLocIds.has(h.locId) : true;
+
         return (
           <Marker 
             key={h.locId} 
             position={[gcj.lat, gcj.lng]}
             icon={ebirdIcons[colorCategory]}
+            opacity={highlightedLocIds ? (isHighlighted ? 1 : 0.2) : 1}
+            zIndexOffset={highlightedLocIds && isHighlighted ? 1000 : 0}
             eventHandlers={{ click: () => onSelectHotspot(h) }}
           />
         );
@@ -563,6 +569,7 @@ export default function MapCanvas() {
   const [routePoints, setRoutePoints] = useState<SavedPoint[]>([]);
   const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>([]);
   const [panToLocation, setPanToLocation] = useState<LatLng | null>(null);
+  const [highlightedLocIds, setHighlightedLocIds] = useState<Set<string> | null>(null);
 
   const handleToggleRouteSelection = (id: string) => {
     setSelectedRouteIds(prev => 
@@ -713,6 +720,7 @@ export default function MapCanvas() {
         
         <BirdHotspots 
           savedEbirdLocIds={savedEbirdLocIds}
+          highlightedLocIds={highlightedLocIds}
           onSelectHotspot={(h) => {
             setSelectedHotspot(h);
             setSelectedLocation(null);
@@ -722,12 +730,18 @@ export default function MapCanvas() {
         {savedPoints.map(p => {
           const gcj = wgs84ToGcj02(p.location.lat, p.location.lng);
           const isSelected = selectedRouteIds.includes(p.id);
+          
+          const isHighlighted = highlightedLocIds ? (p.type === 'ebird' && p.ebirdLocId ? highlightedLocIds.has(p.ebirdLocId) : false) : true;
+          const opacity = highlightedLocIds ? (isHighlighted ? 1 : 0.2) : 1;
+          const zIndexOffset = highlightedLocIds && isHighlighted ? 1000 : (isSelected ? 500 : 0);
 
           return (
             <Marker 
               key={p.id} 
               position={[gcj.lat, gcj.lng]} 
               icon={isSelected ? icons.route : icons.custom}
+              opacity={opacity}
+              zIndexOffset={zIndexOffset}
               eventHandlers={{
                 click: () => {
                   if (p.type === 'ebird' && p.ebirdLocId) {
@@ -870,7 +884,15 @@ export default function MapCanvas() {
         onPlanRoute={handlePlanRoute}
       />}
 
-      {showLeftPanel && <LeftPanel onClose={() => setShowLeftPanel(false)} savedEbirdLocIds={savedEbirdLocIds} />}
+      {showLeftPanel && <LeftPanel 
+        onClose={() => {
+          setShowLeftPanel(false);
+          setHighlightedLocIds(null);
+        }} 
+        savedEbirdLocIds={savedEbirdLocIds} 
+        onHighlightLocations={setHighlightedLocIds}
+        onPanTo={(lat, lng) => setPanToLocation({ lat, lng })}
+      />}
     </div>
   );
 }
@@ -1261,10 +1283,30 @@ function Sidebar({
   );
 }
 
-function LeftPanel({ onClose, savedEbirdLocIds }: { onClose: () => void, savedEbirdLocIds: string[] }) {
-  const { cachedObservations, hotspotFilterDays, showSavedHotspotsOnly } = useStore();
+function LeftPanel({ 
+  onClose, 
+  savedEbirdLocIds,
+  onHighlightLocations,
+  onPanTo
+}: { 
+  onClose: () => void, 
+  savedEbirdLocIds: string[],
+  onHighlightLocations: (locIds: Set<string> | null) => void,
+  onPanTo: (lat: number, lng: number) => void
+}) {
+  const { cachedObservations, hotspotFilterDays, showSavedHotspotsOnly, cachedHotspots } = useStore();
   const [activeTab, setActiveTab] = useState<'species' | 'hotspots'>('species');
   const [expandedHotspot, setExpandedHotspot] = useState<string | null>(null);
+  
+  const [speciesQuery, setSpeciesQuery] = useState('');
+  const [hotspotQuery, setHotspotQuery] = useState('');
+  const [selectedSpeciesCode, setSelectedSpeciesCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedSpeciesCode(null);
+    setExpandedHotspot(null);
+    onHighlightLocations(null);
+  }, [activeTab, onHighlightLocations]);
 
   const filteredObs = useMemo(() => {
     let list = cachedObservations || [];
@@ -1291,7 +1333,8 @@ function LeftPanel({ onClose, savedEbirdLocIds }: { onClose: () => void, savedEb
       name: string,
       count: number,
       latestDt: string,
-      locations: Set<string>
+      locations: Set<string>,
+      locIds: Set<string>
     }>();
     
     const totalRecords = filteredObs.length;
@@ -1303,7 +1346,8 @@ function LeftPanel({ onClose, savedEbirdLocIds }: { onClose: () => void, savedEb
           name: o.comName,
           count: 0,
           latestDt: o.obsDt,
-          locations: new Set()
+          locations: new Set(),
+          locIds: new Set()
         });
       }
       const entry = map.get(o.speciesCode)!;
@@ -1312,6 +1356,7 @@ function LeftPanel({ onClose, savedEbirdLocIds }: { onClose: () => void, savedEb
         entry.latestDt = o.obsDt;
       }
       entry.locations.add(o.locName);
+      entry.locIds.add(o.locId);
     });
 
     return Array.from(map.values()).sort((a, b) => b.latestDt.localeCompare(a.latestDt)).map(s => {
@@ -1324,6 +1369,12 @@ function LeftPanel({ onClose, savedEbirdLocIds }: { onClose: () => void, savedEb
       return { ...s, rarity };
     });
   }, [filteredObs]);
+
+  const filteredSpeciesData = useMemo(() => {
+    if (!speciesQuery.trim()) return speciesData;
+    const q = speciesQuery.toLowerCase();
+    return speciesData.filter(s => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q));
+  }, [speciesData, speciesQuery]);
 
   const hotspotsData = useMemo(() => {
     const map = new Map<string, {
@@ -1355,6 +1406,26 @@ function LeftPanel({ onClose, savedEbirdLocIds }: { onClose: () => void, savedEb
     return Array.from(map.values()).sort((a, b) => b.latestDt.localeCompare(a.latestDt));
   }, [filteredObs]);
 
+  const filteredHotspotsData = useMemo(() => {
+    if (!hotspotQuery.trim()) return hotspotsData;
+    const q = hotspotQuery.toLowerCase();
+    return hotspotsData.filter(h => h.name.toLowerCase().includes(q));
+  }, [hotspotsData, hotspotQuery]);
+
+  // Handle species selection change
+  useEffect(() => {
+    if (activeTab === 'species') {
+      if (selectedSpeciesCode) {
+        const species = speciesData.find(s => s.code === selectedSpeciesCode);
+        if (species) {
+          onHighlightLocations(species.locIds);
+        }
+      } else {
+        onHighlightLocations(null);
+      }
+    }
+  }, [selectedSpeciesCode, activeTab, speciesData, onHighlightLocations]);
+
   return (
     <div className="absolute top-0 left-0 h-full w-96 bg-[#25282c]/95 backdrop-blur-xl shadow-2xl z-[2000] flex flex-col transform transition-transform border-r border-white/10">
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
@@ -1375,7 +1446,7 @@ function LeftPanel({ onClose, savedEbirdLocIds }: { onClose: () => void, savedEb
             activeTab === 'species' ? "text-emerald-400 border-b-2 border-emerald-400 bg-emerald-400/5" : "text-white/50 hover:text-white/80 hover:bg-white/5"
           )}
         >
-          鸟种记录 ({speciesData.length})
+          鸟种记录 ({filteredSpeciesData.length})
         </button>
         <button 
           onClick={() => setActiveTab('hotspots')}
@@ -1384,18 +1455,55 @@ function LeftPanel({ onClose, savedEbirdLocIds }: { onClose: () => void, savedEb
             activeTab === 'hotspots' ? "text-emerald-400 border-b-2 border-emerald-400 bg-emerald-400/5" : "text-white/50 hover:text-white/80 hover:bg-white/5"
           )}
         >
-          观鸟点位 ({hotspotsData.length})
+          观鸟点位 ({filteredHotspotsData.length})
         </button>
       </div>
+
+      {activeTab === 'species' && (
+        <div className="px-4 py-2 border-b border-white/10 shrink-0">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+            <input
+              type="text"
+              placeholder="搜索鸟种名称或编码..."
+              value={speciesQuery}
+              onChange={(e) => setSpeciesQuery(e.target.value)}
+              className="w-full bg-black/30 border border-white/10 rounded-md pl-9 pr-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-emerald-500/50 outline-none transition-colors"
+            />
+          </div>
+        </div>
+      )}
+      
+      {activeTab === 'hotspots' && (
+        <div className="px-4 py-2 border-b border-white/10 shrink-0">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+            <input
+              type="text"
+              placeholder="搜索鸟点名称..."
+              value={hotspotQuery}
+              onChange={(e) => setHotspotQuery(e.target.value)}
+              className="w-full bg-black/30 border border-white/10 rounded-md pl-9 pr-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:border-emerald-500/50 outline-none transition-colors"
+            />
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-4">
         {activeTab === 'species' && (
           <div className="space-y-3">
-            {speciesData.length === 0 ? (
-              <p className="text-center text-xs text-white/40 py-8">无鸟种数据，请尝试放宽过滤条件</p>
+            {filteredSpeciesData.length === 0 ? (
+              <p className="text-center text-xs text-white/40 py-8">无匹配鸟种，请尝试放宽过滤条件</p>
             ) : (
-              speciesData.map((s, idx) => (
-                <div key={s.code} className="bg-black/20 border border-white/5 rounded-lg p-3 hover:border-emerald-500/30 transition-colors">
+              filteredSpeciesData.map((s, idx) => (
+                <div 
+                  key={s.code} 
+                  className={cn(
+                    "bg-black/20 border rounded-lg p-3 hover:border-emerald-500/50 transition-colors cursor-pointer",
+                    selectedSpeciesCode === s.code ? "border-emerald-500 bg-emerald-500/10" : "border-white/5"
+                  )}
+                  onClick={() => setSelectedSpeciesCode(selectedSpeciesCode === s.code ? null : s.code)}
+                >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-mono text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">{idx + 1}</span>
@@ -1427,14 +1535,30 @@ function LeftPanel({ onClose, savedEbirdLocIds }: { onClose: () => void, savedEb
 
         {activeTab === 'hotspots' && (
           <div className="space-y-3">
-            {hotspotsData.length === 0 ? (
-              <p className="text-center text-xs text-white/40 py-8">无点位数据，请尝试放宽过滤条件</p>
+            {filteredHotspotsData.length === 0 ? (
+              <p className="text-center text-xs text-white/40 py-8">无匹配点位，请尝试放宽过滤条件</p>
             ) : (
-              hotspotsData.map((h, idx) => (
-                <div key={h.locId} className="bg-black/20 border border-white/5 rounded-lg overflow-hidden transition-colors hover:border-emerald-500/30">
+              filteredHotspotsData.map((h, idx) => (
+                <div 
+                  key={h.locId} 
+                  className={cn(
+                    "bg-black/20 border rounded-lg overflow-hidden transition-colors hover:border-emerald-500/50",
+                    expandedHotspot === h.locId ? "border-emerald-500 bg-emerald-500/10" : "border-white/5"
+                  )}
+                >
                   <div 
-                    className="p-3 cursor-pointer flex items-center justify-between hover:bg-white/5"
-                    onClick={() => setExpandedHotspot(expandedHotspot === h.locId ? null : h.locId)}
+                    className={cn("p-3 cursor-pointer flex items-center justify-between hover:bg-white/5")}
+                    onClick={() => {
+                      if (expandedHotspot === h.locId) {
+                        setExpandedHotspot(null);
+                        onHighlightLocations(null);
+                      } else {
+                        setExpandedHotspot(h.locId);
+                        onHighlightLocations(new Set([h.locId]));
+                        const hotspot = cachedHotspots[h.locId];
+                        if (hotspot) onPanTo(hotspot.lat, hotspot.lng);
+                      }
+                    }}
                   >
                     <div className="flex-1 min-w-0 pr-4">
                       <div className="flex items-center gap-2 mb-1.5">
