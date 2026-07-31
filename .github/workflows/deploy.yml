@@ -44,7 +44,8 @@ jobs:
         uses: actions/configure-pages@v4
 
       - name: Build
-        run: npm run build
+        # 通过 CLI 动态传入 base 参数，自动获取仓库名 BirdNav
+        run: npx vite build --base=/${{ github.event.repository.name }}/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
