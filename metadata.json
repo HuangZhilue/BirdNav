@@ -1,0 +1,8 @@
+{
+  "name": "观鸟导航 (BirdNav) - New",
+  "description": "一款基于高德地图和 eBird 数据的观鸟热点探索与路线规划应用。支持高德标准、卫星与地形图层、实时路况叠加、周边鸟类热点查询、自定义标注点位与重命名，以及多点路线规划。",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
