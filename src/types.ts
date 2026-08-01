@@ -32,9 +32,9 @@ export interface SavedPoint {
   id: string;
   name: string;
   location: LatLng;
-  type: 'custom' | 'ebird';
+  type: 'custom' | 'ebird' | 'my-location';
   ebirdLocId?: string;
 }
 
-export type MapLayer = 'roadmap' | 'satellite' | 'terrain';
+export type MapLayer = 'roadmap' | 'satellite';
 

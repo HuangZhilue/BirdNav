@@ -8,12 +8,15 @@ interface StoreState {
   removeSavedPoint: (id: string) => void;
   updateSavedPointName: (id: string, name: string) => void;
   reorderSavedPoints: (newPoints: SavedPoint[]) => void;
+  updateMyLocation: (latlng: any | null) => void;
   ebirdToken: string;
   setEbirdToken: (token: string) => void;
   mapLayer: MapLayer;
   setMapLayer: (layer: MapLayer) => void;
   trafficEnabled: boolean;
   setTrafficEnabled: (enabled: boolean) => void;
+  roadNetEnabled: boolean;
+  setRoadNetEnabled: (enabled: boolean) => void;
   cachedHotspots: Record<string, EbirdHotspot>;
   updateCachedHotspots: (hotspots: EbirdHotspot[]) => void;
   cachedObservations: EbirdObservation[];
@@ -35,6 +38,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [ebirdToken, setEbirdToken] = useState<string>('');
   const [mapLayer, setMapLayer] = useState<MapLayer>('roadmap');
   const [trafficEnabled, setTrafficEnabled] = useState<boolean>(false);
+  const [roadNetEnabled, setRoadNetEnabled] = useState<boolean>(true);
   const [cachedHotspots, setCachedHotspots] = useState<Record<string, EbirdHotspot>>({});
   const [cachedObservations, setCachedObservationsState] = useState<EbirdObservation[]>([]);
   const [hotspotFilterDays, setHotspotFilterDaysState] = useState<number | null>(null);
@@ -48,6 +52,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       const token = await get('ebirdToken') || '';
       const layer = await get('mapLayer') || 'roadmap';
       const traffic = await get('trafficEnabled') || false;
+      const roadNet = await get('roadNetEnabled') ?? true;
       const cachedPts = await get('cachedHotspots') || {};
       const cachedObs = await get('cachedObservations') || [];
       const filterDays = await get('hotspotFilterDays') || null;
@@ -57,6 +62,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       setEbirdToken(token);
       setMapLayer(layer);
       setTrafficEnabled(traffic);
+      setRoadNetEnabled(roadNet);
       setCachedHotspots(cachedPts);
       setCachedObservationsState(cachedObs);
       setHotspotFilterDaysState(filterDays);
@@ -95,6 +101,25 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     set('savedPoints', newPoints);
   }, []);
 
+  const updateMyLocation = useCallback((latlng: any | null) => {
+    setSavedPoints(prev => {
+      let newPoints;
+      if (!latlng) {
+        newPoints = prev.filter(p => p.type !== 'my-location');
+      } else {
+        const existingIndex = prev.findIndex(p => p.type === 'my-location');
+        if (existingIndex >= 0) {
+          newPoints = [...prev];
+          newPoints[existingIndex] = { ...newPoints[existingIndex], location: latlng };
+        } else {
+          newPoints = [...prev, { id: 'my-location', name: '我的位置', location: latlng, type: 'my-location' }];
+        }
+      }
+      set('savedPoints', newPoints);
+      return newPoints;
+    });
+  }, []);
+
   const handleSetEbirdToken = useCallback((token: string) => {
     setEbirdToken(token);
     set('ebirdToken', token);
@@ -108,6 +133,11 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const handleSetTrafficEnabled = useCallback((enabled: boolean) => {
     setTrafficEnabled(enabled);
     set('trafficEnabled', enabled);
+  }, []);
+
+  const handleSetRoadNetEnabled = useCallback((enabled: boolean) => {
+    setRoadNetEnabled(enabled);
+    set('roadNetEnabled', enabled);
   }, []);
 
   const updateCachedHotspots = useCallback((hotspots: EbirdHotspot[]) => {
@@ -176,10 +206,11 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <StoreContext.Provider value={{
-      savedPoints, addSavedPoint, removeSavedPoint, updateSavedPointName, reorderSavedPoints,
+      savedPoints, addSavedPoint, removeSavedPoint, updateSavedPointName, reorderSavedPoints, updateMyLocation,
       ebirdToken, setEbirdToken: handleSetEbirdToken,
       mapLayer, setMapLayer: handleSetMapLayer,
       trafficEnabled, setTrafficEnabled: handleSetTrafficEnabled,
+      roadNetEnabled, setRoadNetEnabled: handleSetRoadNetEnabled,
       cachedHotspots, updateCachedHotspots,
       cachedObservations, updateCachedObservations,
       clearProvinceData,

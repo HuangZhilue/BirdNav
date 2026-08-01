@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { renderToString } from 'react-dom/server';
 import { useStore } from '../store/StoreContext';
 import { LatLng, EbirdHotspot, MapLayer, SavedPoint } from '../types';
-import { Bird, MapPin, Navigation, Map as MapIcon, TrafficCone, Compass, List, X, Loader2, Route as RouteIcon, Search } from 'lucide-react';
+import { Bird, MapPin, Navigation, Map as MapIcon, TrafficCone, Compass, List, X, Loader2, Route as RouteIcon, Search, User, Navigation2, ChevronDown, ChevronUp, Layers, EyeOff } from 'lucide-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { wgs84ToGcj02, gcj02ToWgs84 } from '../utils/coords';
@@ -48,15 +48,16 @@ const createCustomIcon = (icon: React.ReactElement, colorClass: string) => {
 };
 
 const ebirdIcons = {
-  red: createCustomIcon(<MapPin className="w-6 h-6" />, 'text-red-500'),
-  yellow: createCustomIcon(<MapPin className="w-6 h-6" />, 'text-yellow-400'),
-  green: createCustomIcon(<MapPin className="w-6 h-6" />, 'text-emerald-500'),
-  grey: createCustomIcon(<MapPin className="w-6 h-6" />, 'text-gray-400'),
+  red: createCustomIcon(<MapPin className="w-6 h-6" fill="currentColor" />, 'text-red-500'),
+  yellow: createCustomIcon(<MapPin className="w-6 h-6" fill="currentColor" />, 'text-yellow-400'),
+  green: createCustomIcon(<MapPin className="w-6 h-6" fill="currentColor" />, 'text-emerald-500'),
+  grey: createCustomIcon(<MapPin className="w-6 h-6" fill="currentColor" />, 'text-gray-400'),
 };
 
 const icons = {
-  custom: createCustomIcon(<MapPin className="w-6 h-6" />, 'text-blue-500'),
-  route: createCustomIcon(<MapPin className="w-6 h-6" />, 'text-orange-500'),
+  custom: createCustomIcon(<MapPin className="w-6 h-6" fill="currentColor" />, 'text-blue-500'),
+  route: createCustomIcon(<MapPin className="w-6 h-6" fill="currentColor" />, 'text-orange-500'),
+  mylocation: createCustomIcon(<User className="w-6 h-6" fill="currentColor" />, 'text-purple-500'),
 };
 
 const CHINA_PROVINCES = [
@@ -137,6 +138,45 @@ function RouteDisplay({ routePoints, onClear }: { routePoints: SavedPoint[], onC
   const [routeLine, setRouteLine] = useState<[number, number][]>([]);
   const [error, setError] = useState('');
   const [routeInfo, setRouteInfo] = useState<{distance: number, duration: number, legs?: {distance: number, duration: number}[]} | null>(null);
+
+  const openNavigationApp = (fromPoint: SavedPoint, toPoint: SavedPoint) => {
+    // Determine OS and provide links
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /android/i.test(navigator.userAgent);
+    
+    // For WGS84, direct open using system defaults or specific apps.
+    // The maps apps usually take GCJ02 or WGS84 depending on the parameter.
+    // To be safe, we convert to GCJ02 since most map apps in China use GCJ02.
+    const to = wgs84ToGcj02(toPoint.location.lat, toPoint.location.lng);
+    const from = wgs84ToGcj02(fromPoint.location.lat, fromPoint.location.lng);
+
+    const apps = [
+      { name: '高德地图', url: `amapuri://route/plan/?sourceApplication=BirdNav&sname=${encodeURIComponent(fromPoint.name)}&slat=${from.lat}&slon=${from.lng}&dlat=${to.lat}&dlon=${to.lng}&dname=${encodeURIComponent(toPoint.name)}&dev=0&m=0&t=0` },
+      { name: '百度地图', url: `baidumap://map/direction?origin=name:${encodeURIComponent(fromPoint.name)}|latlng:${from.lat},${from.lng}&destination=name:${encodeURIComponent(toPoint.name)}|latlng:${to.lat},${to.lng}&coord_type=gcj02&mode=driving` },
+      { name: '腾讯地图', url: `qqmap://map/routeplan?type=drive&from=${encodeURIComponent(fromPoint.name)}&fromcoord=${from.lat},${from.lng}&to=${encodeURIComponent(toPoint.name)}&tocoord=${to.lat},${to.lng}&referer=BirdNav` },
+      { name: 'Google Map', url: `https://www.google.com/maps/dir/?api=1&origin=${fromPoint.location.lat},${fromPoint.location.lng}&destination=${toPoint.location.lat},${toPoint.location.lng}&travelmode=driving` },
+    ];
+
+    let fallbackUrl = `https://www.google.com/maps/dir/?api=1&origin=${fromPoint.location.lat},${fromPoint.location.lng}&destination=${toPoint.location.lat},${toPoint.location.lng}&travelmode=driving`;
+    if (isIOS) {
+      fallbackUrl = `http://maps.apple.com/?saddr=${fromPoint.location.lat},${fromPoint.location.lng}&daddr=${toPoint.location.lat},${toPoint.location.lng}&dirflg=d`;
+    }
+
+    const popupHtml = `
+      <div style="font-family: sans-serif; text-align: center;">
+        <h4 style="margin:0 0 12px 0; color: #333; font-size: 14px;">选择导航软件</h4>
+        <div style="display:flex; flex-direction:column; gap: 8px;">
+          ${apps.map(app => `<a href="${app.url}" style="display:block; padding: 10px; background: #10b981; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">${app.name}</a>`).join('')}
+          <a href="${fallbackUrl}" style="display:block; padding: 10px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">系统默认 / 浏览器导航</a>
+        </div>
+      </div>
+    `;
+
+    const popup = L.popup({ minWidth: 200 })
+      .setLatLng([to.lat, to.lng])
+      .setContent(popupHtml)
+      .openOn(map);
+  };
 
   useEffect(() => {
     if (routePoints.length < 2) {
@@ -262,13 +302,20 @@ function RouteDisplay({ routePoints, onClear }: { routePoints: SavedPoint[], onC
                         <span className="text-white">{toName}</span>
                       </div>
 
-                      {/* 第二块：目前的“路程长度 + 耗时统计” */}
+                      {/* 第二块：“路程长度 + 耗时统计” 及导航按钮 */}
                       <div className="flex items-center justify-between text-[11px] font-mono text-emerald-400/90 bg-white/5 px-2.5 py-1.5 rounded w-full">
                         <span className="text-[10px] text-white/40 font-sans font-normal">段距与估时</span>
                         <div className="flex items-center gap-2">
                           <span>{(leg.distance / 1000).toFixed(1)} km</span>
                           <span className="w-1 h-1 rounded-full bg-emerald-400/50"></span>
                           <span>{formatDuration(leg.duration)}</span>
+                          <button
+                            onClick={() => openNavigationApp(routePoints[i], routePoints[i + 1])}
+                            className="ml-2 bg-emerald-500 hover:bg-emerald-400 text-black p-1 rounded transition-colors shadow-sm"
+                            title="导航"
+                          >
+                            <Navigation2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -367,7 +414,8 @@ function SortablePointItem({
   setEditNameValue,
   updateSavedPointName,
   setEditingPointId,
-  removeSavedPoint
+  removeSavedPoint,
+  onPointClick
 }: any) {
   const {
     attributes,
@@ -406,11 +454,11 @@ function SortablePointItem({
           >
             <GripVertical className="w-4 h-4" />
           </div>
-          <div className={cn("shrink-0", point.type === 'ebird' ? "text-emerald-400" : "text-blue-400")}>
-            {point.type === 'ebird' ? <Bird className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
+          <div className={cn("shrink-0", point.type === 'ebird' ? "text-emerald-400" : (point.type === 'my-location' ? "text-purple-400" : "text-blue-400"))}>
+            {point.type === 'ebird' ? <Bird className="w-5 h-5" fill="currentColor" /> : (point.type === 'my-location' ? <User className="w-5 h-5" fill="currentColor" /> : <MapPin className="w-5 h-5" fill="currentColor" />)}
           </div>
           <div className="truncate flex-1 pr-2">
-            {isEditing ? (
+            {isEditing && point.type === 'custom' ? (
               <input
                 type="text"
                 value={editNameValue}
@@ -432,15 +480,19 @@ function SortablePointItem({
               <p 
                 className="text-xs font-bold text-white truncate cursor-pointer hover:text-emerald-400"
                 onClick={() => {
-                  setEditingPointId(point.id);
-                  setEditNameValue(point.name);
+                  if (point.type === 'custom') {
+                    setEditingPointId(point.id);
+                    setEditNameValue(point.name);
+                  } else {
+                    onPointClick(point);
+                  }
                 }}
-                title="点击修改名称"
+                title={point.type === 'custom' ? "点击修改名称" : "点击查看信息"}
               >
                 {point.name}
               </p>
             )}
-            <p className="text-[9px] uppercase tracking-widest text-white/40">{point.type === 'ebird' ? 'eBird 热点' : '自定义'}</p>
+            <p className="text-[9px] uppercase tracking-widest text-white/40">{point.type === 'ebird' ? 'eBird 热点' : (point.type === 'my-location' ? '我的位置' : '自定义')}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -560,7 +612,7 @@ function SearchBar({ onSelect }: { onSelect: (h: EbirdHotspot) => void }) {
 }
 
 export default function MapCanvas() {
-  const { mapLayer, addSavedPoint, removeSavedPoint, savedPoints, trafficEnabled, cachedHotspots, setIsCalculatingRoute } = useStore();
+  const { mapLayer, addSavedPoint, removeSavedPoint, savedPoints, trafficEnabled, roadNetEnabled, cachedHotspots, setIsCalculatingRoute, updateMyLocation, cachedObservations, hotspotFilterDays, ebirdToken, updateCachedObservations } = useStore();
   const [selectedLocation, setSelectedLocation] = useState<LatLng | null>(null);
   const [selectedHotspot, setSelectedHotspot] = useState<EbirdHotspot | null>(null);
   const [selectedSavedCustomPoint, setSelectedSavedCustomPoint] = useState<SavedPoint | null>(null);
@@ -611,6 +663,21 @@ export default function MapCanvas() {
     return { center: [39.9042, 116.4074], zoom: 11 };
   });
 
+  const fetchHotspotObs = useCallback(async (locId: string) => {
+    if (!ebirdToken) return;
+    try {
+      const res = await fetch(`https://api.ebird.org/v2/data/obs/${locId}/recent?back=30&sppLocale=zh_SIM`, {
+        headers: { 'X-eBirdApiToken': ebirdToken }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        updateCachedObservations(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch hotspot obs', err);
+    }
+  }, [ebirdToken, updateCachedObservations]);
+
   const handleMapClick = (latlng: L.LatLng) => {
     setSelectedLocation({ lat: latlng.lat, lng: latlng.lng });
     setSelectedHotspot(null);
@@ -645,6 +712,24 @@ export default function MapCanvas() {
     }
   };
 
+  // Handle geolocation tracking
+  useEffect(() => {
+    let watchId: number;
+    const isTracking = savedPoints.some(p => p.type === 'my-location');
+    if (isTracking) {
+      watchId = navigator.geolocation.watchPosition(
+        pos => {
+          updateMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        err => console.error(err),
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+      );
+    }
+    return () => {
+      if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [savedPoints.some(p => p.type === 'my-location'), updateMyLocation]);
+
   const tileUrl = useMemo(() => {
     if (mapLayer === 'satellite' || mapLayer === 'terrain') {
       return 'https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}';
@@ -654,11 +739,11 @@ export default function MapCanvas() {
 
   // Transparent road network and labels overlay for Gaode Satellite/Terrain
   const roadNetUrl = useMemo(() => {
-    if (mapLayer === 'satellite' || mapLayer === 'terrain') {
+    if ((mapLayer === 'satellite') && roadNetEnabled) {
       return 'https://webst01.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}';
     }
     return null;
-  }, [mapLayer]);
+  }, [mapLayer, roadNetEnabled]);
 
   // Traffic overlay for Gaode
   const trafficUrl = useMemo(() => {
@@ -723,23 +808,37 @@ export default function MapCanvas() {
           highlightedLocIds={highlightedLocIds}
           onSelectHotspot={(h) => {
             setSelectedHotspot(h);
+            fetchHotspotObs(h.locId);
             setSelectedLocation(null);
           }} 
         />
 
-        {savedPoints.map(p => {
+        {savedPoints.filter(p => {
+          if (p.type !== 'ebird' || !p.ebirdLocId) return true;
+          if (hotspotFilterDays === null) return true;
+          const h = cachedHotspots[p.ebirdLocId];
+          if (!h || !h.latestObsDt) return false;
+          const obsDate = new Date(h.latestObsDt.replace(' ', 'T'));
+          if (isNaN(obsDate.getTime())) return false;
+          const diffDays = (Date.now() - obsDate.getTime()) / (1000 * 60 * 60 * 24);
+          return diffDays <= hotspotFilterDays;
+        }).map(p => {
           const gcj = wgs84ToGcj02(p.location.lat, p.location.lng);
           const isSelected = selectedRouteIds.includes(p.id);
           
           const isHighlighted = highlightedLocIds ? (p.type === 'ebird' && p.ebirdLocId ? highlightedLocIds.has(p.ebirdLocId) : false) : true;
           const opacity = highlightedLocIds ? (isHighlighted ? 1 : 0.2) : 1;
           const zIndexOffset = highlightedLocIds && isHighlighted ? 1000 : (isSelected ? 500 : 0);
+          
+          let icon = icons.custom;
+          if (isSelected) icon = icons.route;
+          else if (p.type === 'my-location') icon = icons.mylocation;
 
           return (
             <Marker 
               key={p.id} 
               position={[gcj.lat, gcj.lng]} 
-              icon={isSelected ? icons.route : icons.custom}
+              icon={icon}
               opacity={opacity}
               zIndexOffset={zIndexOffset}
               eventHandlers={{
@@ -756,6 +855,7 @@ export default function MapCanvas() {
                         lng: p.location.lng,
                       });
                     }
+                    fetchHotspotObs(p.ebirdLocId!);
                     setSelectedLocation(null);
                     setSelectedSavedCustomPoint(null);
                   } else {
@@ -824,6 +924,21 @@ export default function MapCanvas() {
         {selectedHotspot && (() => {
           const gcj = wgs84ToGcj02(selectedHotspot.lat, selectedHotspot.lng);
           const isSaved = savedPoints.some(p => p.type === 'ebird' && p.ebirdLocId === selectedHotspot.locId);
+          
+          let currentFilteredObs = cachedObservations;
+          if (hotspotFilterDays !== null) {
+            currentFilteredObs = currentFilteredObs.filter(o => {
+              if (!o.obsDt) return false;
+              const obsDate = new Date(o.obsDt.replace(' ', 'T'));
+              if (isNaN(obsDate.getTime())) return false;
+              const diffDays = (Date.now() - obsDate.getTime()) / (1000 * 60 * 60 * 24);
+              return diffDays <= hotspotFilterDays;
+            });
+          }
+          const hotspotObs = currentFilteredObs.filter(o => o.locId === selectedHotspot.locId);
+          const speciesSet = new Set(hotspotObs.map(o => o.speciesCode));
+          const totalSpeciesCount = selectedHotspot.numSpeciesAllTime ?? '未知';
+
           return (
             <Popup 
               position={[gcj.lat, gcj.lng]}
@@ -841,7 +956,10 @@ export default function MapCanvas() {
                 <h3 className="font-bold text-black mb-1">{selectedHotspot.locName}</h3>
                 <p className="text-[10px] font-bold text-slate-500 mb-2">eBird 热点</p>
                 <div className="text-[10px] text-slate-600 mb-3 space-y-1 bg-slate-100 p-2 rounded">
-                  <p>鸟种数量: <span className="font-bold text-slate-800">{selectedHotspot.numSpeciesAllTime ?? '未知'}</span> 种</p>
+                  <p>历史鸟种: <span className="font-bold text-slate-800">{totalSpeciesCount}</span> 种</p>
+                  {speciesSet.size > 0 && (
+                    <p>近期已加载: <span className="font-bold text-emerald-600">{speciesSet.size}</span> 种记录</p>
+                  )}
                   <p>最后记录: <span className="font-bold text-slate-800">{selectedHotspot.latestObsDt ?? '无'}</span></p>
                 </div>
                 <button 
@@ -882,6 +1000,26 @@ export default function MapCanvas() {
         selectedRouteIds={selectedRouteIds}
         setSelectedRouteIds={setSelectedRouteIds}
         onPlanRoute={handlePlanRoute}
+        onPointClick={(p) => {
+          if (p.type === 'ebird' && p.ebirdLocId) {
+            const hotspot = cachedHotspots[p.ebirdLocId] || {
+              locId: p.ebirdLocId,
+              locName: p.name,
+              lat: p.location.lat,
+              lng: p.location.lng,
+            };
+            setSelectedHotspot(hotspot);
+            fetchHotspotObs(p.ebirdLocId);
+            setPanToLocation({ lat: p.location.lat, lng: p.location.lng });
+            setSelectedLocation(null);
+            setSelectedSavedCustomPoint(null);
+          } else {
+            setSelectedSavedCustomPoint(p);
+            setSelectedHotspot(null);
+            setSelectedLocation(null);
+            setPanToLocation({ lat: p.location.lat, lng: p.location.lng });
+          }
+        }}
       />}
 
       {showLeftPanel && <LeftPanel 
@@ -891,6 +1029,7 @@ export default function MapCanvas() {
         }} 
         savedEbirdLocIds={savedEbirdLocIds} 
         onHighlightLocations={setHighlightedLocIds}
+        fetchHotspotObs={fetchHotspotObs}
         onPanTo={(lat, lng) => setPanToLocation({ lat, lng })}
       />}
     </div>
@@ -901,16 +1040,18 @@ function Sidebar({
   onClose, 
   selectedRouteIds, 
   setSelectedRouteIds,
-  onPlanRoute
+  onPlanRoute,
+  onPointClick
 }: { 
   onClose: () => void, 
   selectedRouteIds: string[], 
   setSelectedRouteIds: (ids: string[]) => void,
-  onPlanRoute: () => void
+  onPlanRoute: () => void,
+  onPointClick: (p: SavedPoint) => void
 }) {
   const { 
-    mapLayer, setMapLayer, trafficEnabled, setTrafficEnabled, ebirdToken, setEbirdToken, 
-    savedPoints, removeSavedPoint, updateSavedPointName, hotspotFilterDays, setHotspotFilterDays, 
+    mapLayer, setMapLayer, trafficEnabled, setTrafficEnabled, roadNetEnabled, setRoadNetEnabled, ebirdToken, setEbirdToken, 
+    savedPoints, removeSavedPoint, updateSavedPointName, hotspotFilterDays, setHotspotFilterDays, updateMyLocation,
     cachedHotspots, updateCachedHotspots, isCalculatingRoute,
     cachedObservations, updateCachedObservations, clearProvinceData,
     showSavedHotspotsOnly, setShowSavedHotspotsOnly 
@@ -923,6 +1064,9 @@ function Sidebar({
   const [isFetchingHotspots, setIsFetchingHotspots] = useState(false);
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  
+  const [layersExpanded, setLayersExpanded] = useState(true);
+  const [ebirdExpanded, setEbirdExpanded] = useState(true);
   
   useEffect(() => {
     if (toastMessage) {
@@ -1056,65 +1200,125 @@ function Sidebar({
 
       <div className="flex-1 overflow-y-auto p-5 space-y-8">
         
-        {/* Map Layers */}
-        <section>
-          <h3 className="text-xs font-bold text-white/30 uppercase tracking-widest mb-3">地图图层</h3>
-          <div className="grid grid-cols-3 gap-2">
-            {(['roadmap', 'satellite', 'terrain'] as MapLayer[]).map(layer => {
-              const layerName = layer === 'roadmap' ? '标准地图' : layer === 'satellite' ? '卫星地图' : '地形图';
-              return (
-                <button
-                  key={layer}
-                  onClick={() => setMapLayer(layer)}
-                  className={cn(
-                    "py-2 px-1 text-[10px] font-bold rounded border transition-all flex flex-col items-center gap-1",
-                    mapLayer === layer 
-                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-300" 
-                      : "bg-black/30 border-white/5 text-white/60 hover:bg-black/40"
-                  )}
-                >
-                  {layer === 'roadmap' && <MapIcon className="w-4 h-4" />}
-                  {layer === 'satellite' && <Compass className="w-4 h-4" />}
-                  {layer === 'terrain' && <Navigation className="w-4 h-4" />}
-                  {layerName}
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Traffic */}
-        <section>
-          <h3 className="text-xs font-bold text-white/30 uppercase tracking-widest mb-3">图层叠加</h3>
-          <button
-            onClick={() => setTrafficEnabled(!trafficEnabled)}
-            className={cn(
-              "w-full flex items-center justify-between p-3 rounded border transition-all",
-              trafficEnabled ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-black/30 border-white/5 text-white/60 hover:bg-black/40"
-            )}
+        {/* Layer Group */}
+        <section className="bg-black/20 border border-white/5 rounded-lg overflow-hidden">
+          <button 
+            onClick={() => setLayersExpanded(!layersExpanded)}
+            className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
           >
-            <div className="flex items-center gap-3">
-              <TrafficCone className={cn("w-5 h-5", trafficEnabled ? "text-orange-400" : "text-white/40")} />
-              <span className="font-bold text-xs tracking-wider">实时路况</span>
+            <div className="flex items-center gap-2 text-white/80">
+              <Layers className="w-4 h-4" />
+              <h3 className="text-xs font-bold uppercase tracking-widest">地图图层 & 叠加</h3>
             </div>
-            <div className={cn(
-              "w-10 h-5 rounded-full relative transition-colors",
-              trafficEnabled ? "bg-orange-500" : "bg-black/50"
-            )}>
-              <div className={cn(
-                "absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform",
-                trafficEnabled ? "translate-x-5" : "translate-x-0"
-              )} />
-            </div>
+            {layersExpanded ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
           </button>
+          
+          {layersExpanded && (
+            <div className="p-4 pt-0 space-y-4 border-t border-white/5 mt-4">
+              <div>
+                <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">基础地图</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['roadmap', 'satellite'] as MapLayer[]).map(layer => {
+                    const layerName = layer === 'roadmap' ? '标准地图' : '卫星地图';
+                    return (
+                      <button
+                        key={layer}
+                        onClick={() => setMapLayer(layer)}
+                        className={cn(
+                          "py-2 px-1 text-[10px] font-bold rounded border transition-all flex flex-col items-center gap-1",
+                          mapLayer === layer 
+                            ? "bg-emerald-500/20 border-emerald-500 text-emerald-300" 
+                            : "bg-black/30 border-white/5 text-white/60 hover:bg-black/40"
+                        )}
+                      >
+                        {layer === 'roadmap' && <MapIcon className="w-4 h-4" />}
+                        {layer === 'satellite' && <Compass className="w-4 h-4" />}
+                        {layerName}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">图层叠加</h4>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setTrafficEnabled(!trafficEnabled)}
+                    className={cn(
+                      "w-full flex items-center justify-between p-2 rounded border transition-all",
+                      trafficEnabled ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-black/30 border-white/5 text-white/60 hover:bg-black/40"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <TrafficCone className={cn("w-4 h-4", trafficEnabled ? "text-orange-400" : "text-white/40")} />
+                      <span className="font-bold text-xs">实时路况</span>
+                    </div>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      const isTracking = savedPoints.some(p => p.type === 'my-location');
+                      if (isTracking) {
+                        updateMyLocation(null);
+                      } else {
+                        if (navigator.geolocation) {
+                          navigator.geolocation.getCurrentPosition(
+                            pos => updateMyLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                            err => setToastMessage('获取位置失败: ' + err.message),
+                            { enableHighAccuracy: true }
+                          );
+                        }
+                      }
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between p-2 rounded border transition-all",
+                      savedPoints.some(p => p.type === 'my-location') ? "bg-purple-500/20 border-purple-500/50 text-purple-400" : "bg-black/30 border-white/5 text-white/60 hover:bg-black/40"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <User className={cn("w-4 h-4", savedPoints.some(p => p.type === 'my-location') ? "text-purple-400" : "text-white/40")} />
+                      <span className="font-bold text-xs">{savedPoints.some(p => p.type === 'my-location') ? '我的位置 (更新中)' : '我的位置'}</span>
+                    </div>
+                  </button>
+                  
+                  {mapLayer === 'satellite' && (
+                    <button
+                      onClick={() => setRoadNetEnabled(!roadNetEnabled)}
+                      className={cn(
+                        "w-full flex items-center justify-between p-2 rounded border transition-all",
+                        !roadNetEnabled ? "bg-blue-500/20 border-blue-500/50 text-blue-400" : "bg-black/30 border-white/5 text-white/60 hover:bg-black/40"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <EyeOff className={cn("w-4 h-4", !roadNetEnabled ? "text-blue-400" : "text-white/40")} />
+                        <span className="font-bold text-xs">隐藏地名与道路</span>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* eBird Settings */}
-        <section>
-          <h3 className="text-xs font-bold text-white/30 uppercase tracking-widest mb-3">eBird 数据源</h3>
-          <div className="bg-black/20 p-4 rounded border border-white/5 space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-white/50 mb-1.5">API 令牌</label>
+        <section className="bg-black/20 border border-white/5 rounded-lg overflow-hidden">
+          <button 
+            onClick={() => setEbirdExpanded(!ebirdExpanded)}
+            className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+          >
+            <div className="flex items-center gap-2 text-white/80">
+              <Bird className="w-4 h-4" />
+              <h3 className="text-xs font-bold uppercase tracking-widest">eBird 数据源</h3>
+            </div>
+            {ebirdExpanded ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
+          </button>
+          
+          {ebirdExpanded && (
+            <div className="p-4 pt-0 space-y-4 border-t border-white/5 mt-4">
+              <div>
+                <label className="block text-xs font-bold text-white/50 mb-1.5">API 令牌</label>
               <div className="flex gap-2">
                 <input 
                   type="password" 
@@ -1192,6 +1396,7 @@ function Sidebar({
               </div>
             </div>
           </div>
+          )}
         </section>
 
         {/* Saved Points */}
@@ -1250,6 +1455,7 @@ function Sidebar({
                         updateSavedPointName={updateSavedPointName}
                         setEditingPointId={setEditingPointId}
                         removeSavedPoint={removeSavedPoint}
+                        onPointClick={onPointClick}
                       />
                     );
                   })}
@@ -1287,11 +1493,13 @@ function LeftPanel({
   onClose, 
   savedEbirdLocIds,
   onHighlightLocations,
+  fetchHotspotObs,
   onPanTo
 }: { 
   onClose: () => void, 
   savedEbirdLocIds: string[],
   onHighlightLocations: (locIds: Set<string> | null) => void,
+  fetchHotspotObs: (locId: string) => void,
   onPanTo: (lat: number, lng: number) => void
 }) {
   const { cachedObservations, hotspotFilterDays, showSavedHotspotsOnly, cachedHotspots } = useStore();
@@ -1313,8 +1521,9 @@ function LeftPanel({
 
     if (showSavedHotspotsOnly) {
       list = list.filter(o => savedEbirdLocIds.includes(o.locId));
-      // 开启后忽略“热点筛选”的限制
-    } else if (hotspotFilterDays !== null) {
+    }
+    
+    if (hotspotFilterDays !== null) {
       list = list.filter(o => {
         if (!o.obsDt) return false;
         const obsDate = new Date(o.obsDt.replace(' ', 'T'));
@@ -1382,8 +1591,36 @@ function LeftPanel({
       name: string,
       latestDt: string,
       species: Set<string>,
-      obs: typeof filteredObs
+      obs: typeof filteredObs,
+      numSpeciesAllTime?: number
     }>();
+
+    let baseHotspots = Object.values(cachedHotspots) as EbirdHotspot[];
+    
+    if (showSavedHotspotsOnly) {
+      baseHotspots = baseHotspots.filter(h => savedEbirdLocIds.includes(h.locId));
+    }
+    
+    if (hotspotFilterDays !== null) {
+      baseHotspots = baseHotspots.filter(h => {
+        if (!h.latestObsDt) return false;
+        const obsDate = new Date(h.latestObsDt.replace(' ', 'T'));
+        if (isNaN(obsDate.getTime())) return false;
+        const diffDays = (Date.now() - obsDate.getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays <= hotspotFilterDays;
+      });
+    }
+
+    baseHotspots.forEach(h => {
+      map.set(h.locId, {
+        locId: h.locId,
+        name: h.locName,
+        latestDt: h.latestObsDt || '无',
+        species: new Set(),
+        obs: [],
+        numSpeciesAllTime: h.numSpeciesAllTime
+      });
+    });
 
     filteredObs.forEach(o => {
       if (!map.has(o.locId)) {
@@ -1398,13 +1635,13 @@ function LeftPanel({
       const entry = map.get(o.locId)!;
       entry.species.add(o.speciesCode);
       entry.obs.push(o);
-      if (o.obsDt > entry.latestDt) {
+      if (entry.latestDt === '无' || o.obsDt > entry.latestDt) {
         entry.latestDt = o.obsDt;
       }
     });
 
     return Array.from(map.values()).sort((a, b) => b.latestDt.localeCompare(a.latestDt));
-  }, [filteredObs]);
+  }, [filteredObs, cachedHotspots, showSavedHotspotsOnly, savedEbirdLocIds, hotspotFilterDays]);
 
   const filteredHotspotsData = useMemo(() => {
     if (!hotspotQuery.trim()) return hotspotsData;
@@ -1554,6 +1791,7 @@ function LeftPanel({
                         onHighlightLocations(null);
                       } else {
                         setExpandedHotspot(h.locId);
+                        fetchHotspotObs(h.locId);
                         onHighlightLocations(new Set([h.locId]));
                         const hotspot = cachedHotspots[h.locId];
                         if (hotspot) onPanTo(hotspot.lat, hotspot.lng);
@@ -1567,25 +1805,34 @@ function LeftPanel({
                       </div>
                       <div className="flex gap-4 text-[10px] text-white/50 pl-7">
                         <span>最后记录: {h.latestDt}</span>
-                        <span>鸟种: <span className="font-bold text-emerald-400">{h.species.size}</span></span>
+                        <span>历史鸟种: <span className="font-bold text-white/80">{h.numSpeciesAllTime || '未知'}</span></span>
+                        {h.species.size > 0 && (
+                          <span>近期已加载: <span className="font-bold text-emerald-400">{h.species.size}</span></span>
+                        )}
                       </div>
                     </div>
                   </div>
                   
                   {expandedHotspot === h.locId && (
                     <div className="bg-black/40 p-3 border-t border-white/5">
-                      <h5 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2 px-1">本点位记录的鸟种</h5>
-                      <div className="space-y-2">
-                        {h.obs.map((o, i) => (
-                          <div key={`${o.speciesCode}-${i}`} className="flex items-center justify-between text-xs p-1.5 hover:bg-white/5 rounded transition-colors">
-                            <span className="text-white/80">{o.comName}</span>
-                            <div className="flex items-center gap-3 text-[10px] text-white/40">
-                              <span>{o.obsDt.split(' ')[0]}</span>
-                              <span className="w-8 text-right text-emerald-400/80">{o.howMany || 1}只</span>
+                      <h5 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2 px-1">本点位近期加载的鸟种记录</h5>
+                      {h.obs.length > 0 ? (
+                        <div className="space-y-2">
+                          {h.obs.map((o, i) => (
+                            <div key={`${o.speciesCode}-${i}`} className="flex items-center justify-between text-xs p-1.5 hover:bg-white/5 rounded transition-colors">
+                              <span className="text-white/80">{o.comName}</span>
+                              <div className="flex items-center gap-3 text-[10px] text-white/40">
+                                <span>{o.obsDt.split(' ')[0]}</span>
+                                <span className="w-8 text-right text-emerald-400/80">{o.howMany || 1}只</span>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-white/30 px-1 mt-2">
+                          由于 eBird API 限制（仅返回区域内每种鸟类的最新记录），当前点位暂无近期的详细鸟种列表。
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
