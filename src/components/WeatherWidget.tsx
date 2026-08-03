@@ -90,7 +90,7 @@ export default function WeatherWidget({ lat, lng }: WeatherWidgetProps) {
 
   if (!data && loading) {
     return (
-      <div className="absolute top-[max(6.5rem,env(safe-area-inset-top,0px)+5rem)] sm:top-[max(1.5rem,env(safe-area-inset-top,0px))] left-1/2 -translate-x-1/2 sm:left-auto sm:right-[260px] sm:translate-x-0 z-[2000] bg-[#25282c]/90 backdrop-blur-md px-4 py-2 rounded-lg border border-white/10 shadow-2xl flex items-center justify-center">
+      <div className="absolute top-[max(4.5rem,env(safe-area-inset-top,0px)+3.5rem)] sm:top-[max(1.5rem,env(safe-area-inset-top,0px))] left-1/2 -translate-x-1/2 sm:left-auto sm:right-[260px] sm:translate-x-0 z-[500] bg-[#25282c]/90 backdrop-blur-md px-4 py-2 rounded-lg border border-white/10 shadow-2xl flex items-center justify-center">
         <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
       </div>
     );
@@ -105,11 +105,11 @@ export default function WeatherWidget({ lat, lng }: WeatherWidgetProps) {
   return (
     <div 
       ref={wrapperRef}
-      className="absolute top-[max(6.5rem,env(safe-area-inset-top,0px)+5rem)] sm:top-[max(1.5rem,env(safe-area-inset-top,0px))] left-1/2 -translate-x-1/2 sm:left-auto sm:right-60 sm:translate-x-0 z-[2000] flex flex-col gap-2 items-center sm:items-end"
+      className="absolute top-[max(4.5rem,env(safe-area-inset-top,0px)+3.5rem)] sm:top-[max(1.5rem,env(safe-area-inset-top,0px))] left-1/2 -translate-x-1/2 sm:left-auto sm:right-60 sm:translate-x-0 z-[500] flex flex-col gap-2 items-center sm:items-end pointer-events-none"
     >
       <div 
         onClick={() => setExpanded(!expanded)}
-        className="bg-[#25282c]/90 hover:bg-[#25282c] transition-colors cursor-pointer backdrop-blur-md px-3 py-2 rounded-lg border border-white/10 shadow-2xl flex items-center gap-4 select-none"
+        className="bg-[#25282c]/90 hover:bg-[#25282c] transition-colors cursor-pointer backdrop-blur-md px-3 py-2 rounded-lg border border-white/10 shadow-2xl flex items-center gap-4 select-none pointer-events-auto"
       >
         <div className="flex items-center gap-2 text-emerald-400" title={getWeatherDesc(current.weather_code)}>
           {getWeatherIcon(current.weather_code, "w-6 h-6")}
@@ -133,7 +133,7 @@ export default function WeatherWidget({ lat, lng }: WeatherWidgetProps) {
       </div>
 
       {expanded && (
-        <div className="bg-[#25282c]/95 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl w-full sm:w-[320px] p-3 animate-in fade-in slide-in-from-top-2">
+        <div className="bg-[#25282c]/95 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl w-[90vw] sm:w-[320px] p-3 animate-in fade-in slide-in-from-top-2 pointer-events-auto">
           <h4 className="text-xs font-bold text-white/50 uppercase tracking-widest mb-3 border-b border-white/10 pb-2">7日预报</h4>
           <div className="flex flex-col gap-2">
             {daily.time.map((time: string, index: number) => {

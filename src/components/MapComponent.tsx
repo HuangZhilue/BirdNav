@@ -134,7 +134,7 @@ function MapEvents({ onMapClick, onMapChange }: { onMapClick: (latlng: L.LatLng)
   return null;
 }
 
-function RouteDisplay({ routePoints, onClear }: { routePoints: SavedPoint[], onClear: () => void }) {
+function RouteDisplay({ routePoints, onClear, uiPortalTarget }: { routePoints: SavedPoint[], onClear: () => void, uiPortalTarget: HTMLElement | null }) {
   const map = useMap();
   const { isCalculatingRoute, setIsCalculatingRoute } = useStore();
   const [routeLine, setRouteLine] = useState<[number, number][]>([]);
@@ -255,14 +255,15 @@ function RouteDisplay({ routePoints, onClear }: { routePoints: SavedPoint[], onC
       {routeLine.length > 0 && (
         <Polyline positions={routeLine} color="#3b82f6" weight={6} opacity={0.8} />
       )}
-      <div 
-        ref={containerRef}
-        className="absolute inset-x-4 sm:inset-auto sm:left-6 z-[2001] bg-[#25282c]/95 border border-white/10 backdrop-blur px-4 py-3.5 shadow-2xl rounded-lg flex flex-col items-center gap-3 sm:min-w-[310px] sm:max-w-[380px] overflow-y-auto pointer-events-auto"
-        style={{ 
-          top: 'max(5rem, env(safe-area-inset-top,0px) + 3.5rem)',
-          maxHeight: 'calc(100dvh - max(5rem, env(safe-area-inset-top,0px) + 3.5rem) - max(1.5rem, env(safe-area-inset-bottom,0px)) - 4rem)'
-        }}
-      >
+      {uiPortalTarget && createPortal(
+        <div 
+          ref={containerRef}
+          className="absolute inset-x-4 sm:inset-auto sm:left-6 z-[2001] bg-[#25282c]/95 border border-white/10 backdrop-blur px-4 py-3.5 shadow-2xl rounded-lg flex flex-col items-center gap-3 sm:min-w-[310px] sm:max-w-[380px] overflow-y-auto pointer-events-auto"
+          style={{ 
+            top: 'max(5rem, env(safe-area-inset-top,0px) + 3.5rem)',
+            maxHeight: 'calc(100dvh - max(5rem, env(safe-area-inset-top,0px) + 3.5rem) - max(1.5rem, env(safe-area-inset-bottom,0px)) - 4rem)'
+          }}
+        >
         <div className="flex items-center gap-4 w-full justify-between border-b border-white/10 pb-2.5">
           <div className="flex items-center gap-2 text-white font-bold text-xs tracking-wider">
             <RouteIcon className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -350,7 +351,9 @@ function RouteDisplay({ routePoints, onClear }: { routePoints: SavedPoint[], onC
             </>
           )
         )}
-      </div>
+      </div>,
+      uiPortalTarget
+      )}
     </>
   );
 }
@@ -474,7 +477,7 @@ function SortablePointItem({
           <div 
             {...attributes} 
             {...listeners} 
-            className="cursor-grab text-white/30 hover:text-white/60 p-1 -ml-2 active:cursor-grabbing"
+            className="cursor-grab touch-none text-white/30 hover:text-white/60 p-1 -ml-2 active:cursor-grabbing"
             title="拖动排序"
           >
             <GripVertical className="w-4 h-4" />
@@ -520,7 +523,7 @@ function SortablePointItem({
             <p className="text-[9px] uppercase tracking-widest text-white/40">{point.type === 'ebird' ? 'eBird 热点' : (point.type === 'my-location' ? '我的位置' : '自定义')}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
           <button 
             onClick={() => toggleSelection(point.id)}
             className={cn("p-1.5 rounded transition-colors", isSelected ? "bg-orange-500/20 text-orange-400 border border-orange-500/50" : "bg-white/5 hover:bg-white/10 text-white/60 border border-transparent")}
@@ -697,6 +700,7 @@ function SearchBar({ onSelect }: { onSelect: (h: EbirdHotspot) => void }) {
 
 export default function MapCanvas() {
   const { mapLayer, addSavedPoint, removeSavedPoint, savedPoints, trafficEnabled, roadNetEnabled, cachedHotspots, setIsCalculatingRoute, updateMyLocation, cachedObservations, hotspotFilterDays, ebirdToken, updateCachedObservations } = useStore();
+  const [uiPortalTarget, setUiPortalTarget] = useState<HTMLDivElement | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<LatLng | null>(null);
   const [selectedHotspot, setSelectedHotspot] = useState<EbirdHotspot | null>(null);
   const [selectedSavedCustomPoint, setSelectedSavedCustomPoint] = useState<SavedPoint | null>(null);
@@ -847,6 +851,8 @@ export default function MapCanvas() {
       
       <WeatherWidget lat={mapCenter[0]} lng={mapCenter[1]} />
 
+      <div ref={setUiPortalTarget} className="absolute inset-0 pointer-events-none z-[1000]" />
+
       {/* Brand Header Badge */}
       <div 
         className="absolute right-6 z-[2000] hidden sm:flex items-center gap-3 bg-[#25282c]/90 backdrop-blur-md px-3.5 py-2 rounded-lg border border-white/10 shadow-2xl pointer-events-auto"
@@ -891,7 +897,7 @@ export default function MapCanvas() {
           }}
         />
         
-        <RouteDisplay routePoints={routePoints} onClear={() => {
+        <RouteDisplay uiPortalTarget={uiPortalTarget} routePoints={routePoints} onClear={() => {
           setRoutePoints([]);
           setSelectedRouteIds([]);
         }} />
