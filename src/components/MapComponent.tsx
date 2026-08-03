@@ -258,8 +258,8 @@ function RouteDisplay({ routePoints, onClear }: { routePoints: SavedPoint[], onC
         ref={containerRef}
         className="absolute inset-x-4 sm:inset-auto sm:left-6 z-[2001] bg-[#25282c]/95 border border-white/10 backdrop-blur px-4 py-3.5 shadow-2xl rounded-lg flex flex-col items-center gap-3 sm:min-w-[310px] sm:max-w-[380px] overflow-y-auto pointer-events-auto"
         style={{ 
-          top: 'max(5rem, env(safe-area-inset-top) + 3.5rem)',
-          maxHeight: 'calc(100dvh - max(5rem, env(safe-area-inset-top) + 3.5rem) - max(1.5rem, env(safe-area-inset-bottom)) - 4rem)'
+          top: 'max(5rem, env(safe-area-inset-top,0px) + 3.5rem)',
+          maxHeight: 'calc(100dvh - max(5rem, env(safe-area-inset-top,0px) + 3.5rem) - max(1.5rem, env(safe-area-inset-bottom,0px)) - 4rem)'
         }}
       >
         <div className="flex items-center gap-4 w-full justify-between border-b border-white/10 pb-2.5">
@@ -583,7 +583,7 @@ function CustomScales() {
        {/* Horizontal Scale (Top) */}
        <div 
          className="absolute left-1/2 -translate-x-1/2 z-[2000] pointer-events-none flex flex-col items-center"
-         style={{ top: 'max(4.5rem, env(safe-area-inset-top) + 3rem)' }}
+         style={{ top: 'max(4.5rem, env(safe-area-inset-top,0px) + 3rem)' }}
        >
           <div className="text-emerald-400 text-[10px] font-bold mb-0.5 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" style={{ textShadow: '0px 1px 3px rgba(0,0,0,1), 0px 0px 2px rgba(0,0,0,1)' }}>{scaleText}</div>
           <div className="border-b-2 border-l-2 border-r-2 border-emerald-400 h-1.5 transition-all duration-100 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" style={{ width: scaleSize, backgroundColor: 'rgba(0,0,0,0.3)' }}></div>
@@ -640,7 +640,7 @@ function SearchBar({ onSelect }: { onSelect: (h: EbirdHotspot) => void }) {
   }, []);
 
   return (
-    <div ref={wrapperRef} className="absolute top-[max(1.5rem,env(safe-area-inset-top))] left-4 right-4 sm:left-6 sm:right-auto z-[2000] sm:w-80">
+    <div ref={wrapperRef} className="absolute top-[max(1.5rem,env(safe-area-inset-top,0px))] left-4 right-4 sm:left-6 sm:right-auto z-[2000] sm:w-80">
       <div className="bg-[#25282c]/95 backdrop-blur shadow-2xl rounded-lg border border-white/10 flex items-center px-3 py-2 transition-colors focus-within:border-emerald-500/50">
          <Search className="w-5 h-5 text-white/50 mr-2 shrink-0" />
          <input 
@@ -845,7 +845,7 @@ export default function MapCanvas() {
       {/* Brand Header Badge */}
       <div 
         className="absolute right-6 z-[2000] hidden sm:flex items-center gap-3 bg-[#25282c]/90 backdrop-blur-md px-3.5 py-2 rounded-lg border border-white/10 shadow-2xl pointer-events-auto"
-        style={{ top: 'max(1.5rem, env(safe-area-inset-top))' }}
+        style={{ top: 'max(1.5rem, env(safe-area-inset-top,0px))' }}
       >
         <div className="w-6 h-6 bg-emerald-500 rounded flex items-center justify-center">
           <Bird className="w-4 h-4 text-black" />
@@ -1071,7 +1071,7 @@ export default function MapCanvas() {
         <button 
           onClick={() => setShowDrawer(true)}
           className="absolute right-4 sm:right-6 z-[2005] w-12 h-12 bg-[#25282c] border border-white/10 rounded-full sm:rounded overflow-hidden shadow-2xl flex items-center justify-center text-white/80 hover:text-white hover:bg-[#32363b] active:scale-95 transition-all select-none"
-          style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+          style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom,0px))' }}
           title="设置与数据管理"
         >
           <Menu className="w-5 h-5" />
@@ -1082,7 +1082,7 @@ export default function MapCanvas() {
         <button 
           onClick={() => setShowLeftPanel(true)}
           className="absolute left-4 sm:left-6 z-[2005] px-4 h-12 bg-[#25282c] border border-white/10 rounded-full sm:rounded shadow-2xl flex items-center justify-center gap-2 text-white/80 hover:text-white hover:bg-[#32363b] active:scale-95 transition-all font-bold text-sm select-none"
-          style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+          style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom,0px))' }}
           title="鸟种 / 鸟点分析"
         >
           <List className="w-4 h-4 text-emerald-400" />
