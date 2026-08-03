@@ -10,6 +10,7 @@ import { Bird, MapPin, Navigation, Map as MapIcon, TrafficCone, Compass, List, X
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { wgs84ToGcj02, gcj02ToWgs84 } from '../utils/coords';
+import WeatherWidget from './WeatherWidget';
 import {
   DndContext,
   closestCenter,
@@ -746,6 +747,8 @@ export default function MapCanvas() {
     return { center: [39.9042, 116.4074], zoom: 11 };
   });
 
+  const [mapCenter, setMapCenter] = useState<L.LatLngTuple>(initialMapState.center as L.LatLngTuple);
+
   const fetchHotspotObs = useCallback(async (locId: string) => {
     if (!ebirdToken) return;
     try {
@@ -841,6 +844,8 @@ export default function MapCanvas() {
       <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 0.5px, transparent 0.5px)', backgroundSize: '20px 20px' }}></div>
       
       <SearchBar onSelect={handleSearchSelect} />
+      
+      <WeatherWidget lat={mapCenter[0]} lng={mapCenter[1]} />
 
       {/* Brand Header Badge */}
       <div 
@@ -878,6 +883,7 @@ export default function MapCanvas() {
         <MapEvents 
           onMapClick={handleMapClick}
           onMapChange={(center, zoom) => {
+            setMapCenter([center.lat, center.lng]);
             localStorage.setItem('mapState', JSON.stringify({
               center: [center.lat, center.lng],
               zoom
