@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -5,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { renderToString } from 'react-dom/server';
 import { useStore } from '../store/StoreContext';
 import { LatLng, EbirdHotspot, MapLayer, SavedPoint } from '../types';
-import { Bird, MapPin, Navigation, Map as MapIcon, TrafficCone, Compass, List, X, Loader2, Route as RouteIcon, Search, User, Navigation2, ChevronDown, ChevronUp, Layers, EyeOff } from 'lucide-react';
+import { Bird, MapPin, Navigation, Map as MapIcon, TrafficCone, Compass, List, X, Loader2, Route as RouteIcon, Search, User, Navigation2, ChevronDown, ChevronUp, Layers, EyeOff, Menu } from 'lucide-react';
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { wgs84ToGcj02, gcj02ToWgs84 } from '../utils/coords';
@@ -138,6 +139,15 @@ function RouteDisplay({ routePoints, onClear }: { routePoints: SavedPoint[], onC
   const [routeLine, setRouteLine] = useState<[number, number][]>([]);
   const [error, setError] = useState('');
   const [routeInfo, setRouteInfo] = useState<{distance: number, duration: number, legs?: {distance: number, duration: number}[]} | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      L.DomEvent.disableScrollPropagation(containerRef.current);
+      L.DomEvent.disableClickPropagation(containerRef.current);
+    }
+  });
 
   const openNavigationApp = (fromPoint: SavedPoint, toPoint: SavedPoint) => {
     // Determine OS and provide links
@@ -244,86 +254,100 @@ function RouteDisplay({ routePoints, onClear }: { routePoints: SavedPoint[], onC
       {routeLine.length > 0 && (
         <Polyline positions={routeLine} color="#3b82f6" weight={6} opacity={0.8} />
       )}
-      <div className="absolute top-20 left-6 z-[2001] bg-[#25282c]/95 border border-white/10 backdrop-blur px-4 py-3.5 shadow-2xl rounded-lg flex flex-col items-center gap-3 min-w-[310px] max-w-[380px] max-h-[calc(100vh-100px)] overflow-y-auto">
+      <div 
+        ref={containerRef}
+        className="absolute inset-x-4 sm:inset-auto sm:left-6 z-[2001] bg-[#25282c]/95 border border-white/10 backdrop-blur px-4 py-3.5 shadow-2xl rounded-lg flex flex-col items-center gap-3 sm:min-w-[310px] sm:max-w-[380px] overflow-y-auto pointer-events-auto"
+        style={{ 
+          top: 'max(5rem, env(safe-area-inset-top) + 3.5rem)',
+          maxHeight: 'calc(100dvh - max(5rem, env(safe-area-inset-top) + 3.5rem) - max(1.5rem, env(safe-area-inset-bottom)) - 4rem)'
+        }}
+      >
         <div className="flex items-center gap-4 w-full justify-between border-b border-white/10 pb-2.5">
           <div className="flex items-center gap-2 text-white font-bold text-xs tracking-wider">
             <RouteIcon className="w-4 h-4 text-emerald-500 shrink-0" />
             <span>路线规划 ({routePoints.length} 个点)</span>
           </div>
-          <button onClick={onClear} className="p-1 bg-white/5 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors">
-            <X className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1 bg-white/5 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors">
+              {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+            </button>
+            <button onClick={onClear} className="p-1 bg-white/5 hover:bg-white/10 rounded text-white/60 hover:text-white transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
         
-        {isCalculatingRoute ? (
-          <div className="py-8 flex flex-col items-center justify-center gap-3 w-full text-white/70">
-            <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
-            <span className="text-xs font-bold text-emerald-400">正在计算多点路线及耗时...</span>
-            <span className="text-[10px] text-white/40">规划 {routePoints.length} 个观测点位</span>
-          </div>
-        ) : (
-          <>
-            {routeInfo && (
-              <div className="flex items-center justify-between w-full text-[11px] text-emerald-400 font-mono bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded">
-                <span className="font-bold">总计</span>
-                <div className="flex items-center gap-2">
-                  <span>{(routeInfo.distance / 1000).toFixed(1)} km</span>
-                  <span className="w-1 h-1 rounded-full bg-emerald-500/50"></span>
-                  <span>{formatDuration(routeInfo.duration)}</span>
+        {!isCollapsed && (
+          isCalculatingRoute ? (
+            <div className="py-8 flex flex-col items-center justify-center gap-3 w-full text-white/70">
+              <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+              <span className="text-xs font-bold text-emerald-400">正在计算多点路线及耗时...</span>
+              <span className="text-[10px] text-white/40">规划 {routePoints.length} 个观测点位</span>
+            </div>
+          ) : (
+            <>
+              {routeInfo && (
+                <div className="flex items-center justify-between w-full text-[11px] text-emerald-400 font-mono bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded">
+                  <span className="font-bold">总计</span>
+                  <div className="flex items-center gap-2">
+                    <span>{(routeInfo.distance / 1000).toFixed(1)} km</span>
+                    <span className="w-1 h-1 rounded-full bg-emerald-500/50"></span>
+                    <span>{formatDuration(routeInfo.duration)}</span>
+                  </div>
                 </div>
-              </div>
-            )}
-            
-            {error && <span className="text-red-400 text-[10px] font-bold uppercase tracking-widest">{error}</span>}
-
-            {/* 分段统计：改成地名/鸟点名称，并以两个分块呈现：第一块名称指示，第二块路程与耗时 */}
-            {routeInfo?.legs && routeInfo.legs.length > 0 && (
-              <div className="flex flex-col gap-2.5 w-full mt-1 border-t border-white/10 pt-3">
-                <span className="text-[10px] text-white/50 font-bold uppercase tracking-widest mb-0.5">分段统计</span>
-                {routeInfo.legs.map((leg, i) => {
-                  const fromName = routePoints[i]?.name || `地点 ${i + 1}`;
-                  const toName = routePoints[i + 1]?.name || `地点 ${i + 2}`;
-
-                  return (
-                    <div 
-                      key={i} 
-                      className="flex flex-col gap-2 bg-black/30 border border-white/5 hover:border-white/10 p-2.5 rounded transition-colors"
-                    >
-                      {/* 第一块：“地点A -> 地点B”的名称指示 */}
-                      <div className="text-xs font-bold text-white/90 leading-relaxed break-words flex items-center flex-wrap gap-1.5">
-                        <span className="text-emerald-400 font-normal text-[10px] bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">
-                          {i + 1}
-                        </span>
-                        <span className="text-white">{fromName}</span>
-                        <span className="text-emerald-400 font-bold mx-0.5 shrink-0">➔</span>
-                        <span className="text-emerald-400 font-normal text-[10px] bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">
-                          {i + 2}
-                        </span>
-                        <span className="text-white">{toName}</span>
-                      </div>
-
-                      {/* 第二块：“路程长度 + 耗时统计” 及导航按钮 */}
-                      <div className="flex items-center justify-between text-[11px] font-mono text-emerald-400/90 bg-white/5 px-2.5 py-1.5 rounded w-full">
-                        <span className="text-[10px] text-white/40 font-sans font-normal">段距与估时</span>
-                        <div className="flex items-center gap-2">
-                          <span>{(leg.distance / 1000).toFixed(1)} km</span>
-                          <span className="w-1 h-1 rounded-full bg-emerald-400/50"></span>
-                          <span>{formatDuration(leg.duration)}</span>
-                          <button
-                            onClick={() => openNavigationApp(routePoints[i], routePoints[i + 1])}
-                            className="ml-2 bg-emerald-500 hover:bg-emerald-400 text-black p-1 rounded transition-colors shadow-sm"
-                            title="导航"
-                          >
-                            <Navigation2 className="w-3.5 h-3.5" />
-                          </button>
+              )}
+              
+              {error && <span className="text-red-400 text-[10px] font-bold uppercase tracking-widest">{error}</span>}
+  
+              {/* 分段统计：改成地名/鸟点名称，并以两个分块呈现：第一块名称指示，第二块路程与耗时 */}
+              {routeInfo?.legs && routeInfo.legs.length > 0 && (
+                <div className="flex flex-col gap-2.5 w-full mt-1 border-t border-white/10 pt-3">
+                  <span className="text-[10px] text-white/50 font-bold uppercase tracking-widest mb-0.5">分段统计</span>
+                  {routeInfo.legs.map((leg, i) => {
+                    const fromName = routePoints[i]?.name || `地点 ${i + 1}`;
+                    const toName = routePoints[i + 1]?.name || `地点 ${i + 2}`;
+  
+                    return (
+                      <div 
+                        key={i} 
+                        className="flex flex-col gap-2 bg-black/30 border border-white/5 hover:border-white/10 p-2.5 rounded transition-colors"
+                      >
+                        {/* 第一块：“地点A -> 地点B”的名称指示 */}
+                        <div className="text-xs font-bold text-white/90 leading-relaxed break-words flex items-center flex-wrap gap-1.5">
+                          <span className="text-emerald-400 font-normal text-[10px] bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">
+                            {i + 1}
+                          </span>
+                          <span className="text-white">{fromName}</span>
+                          <span className="text-emerald-400 font-bold mx-0.5 shrink-0">➔</span>
+                          <span className="text-emerald-400 font-normal text-[10px] bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">
+                            {i + 2}
+                          </span>
+                          <span className="text-white">{toName}</span>
+                        </div>
+  
+                        {/* 第二块：“路程长度 + 耗时统计” 及导航按钮 */}
+                        <div className="flex items-center justify-between text-[11px] font-mono text-emerald-400/90 bg-white/5 px-2.5 py-1.5 rounded w-full">
+                          <span className="text-[10px] text-white/40 font-sans font-normal">段距与估时</span>
+                          <div className="flex items-center gap-2">
+                            <span>{(leg.distance / 1000).toFixed(1)} km</span>
+                            <span className="w-1 h-1 rounded-full bg-emerald-400/50"></span>
+                            <span>{formatDuration(leg.duration)}</span>
+                            <button
+                              onClick={() => openNavigationApp(routePoints[i], routePoints[i + 1])}
+                              className="ml-2 bg-emerald-500 hover:bg-emerald-400 text-black p-1 rounded transition-colors shadow-sm"
+                              title="导航"
+                            >
+                              <Navigation2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )
         )}
       </div>
     </>
@@ -516,6 +540,65 @@ function SortablePointItem({
   );
 }
 
+function CustomScales() {
+  const map = useMap();
+  const [scaleSize, setScaleSize] = useState(0);
+  const [scaleText, setScaleText] = useState('');
+  
+  const updateScale = useCallback(() => {
+    if (!map) return;
+    const maxWidth = 100;
+    const p1 = map.containerPointToLatLng([0, 0]);
+    const p2 = map.containerPointToLatLng([maxWidth, 0]);
+    const dist = p1.distanceTo(p2);
+    
+    let niceDist = 0;
+    if (dist > 0) {
+      const pow10 = Math.pow(10, Math.floor(Math.log10(dist)));
+      let d = dist / pow10;
+      let multiplier = 1;
+      if (d >= 10) multiplier = 10;
+      else if (d >= 5) multiplier = 5;
+      else if (d >= 3) multiplier = 3;
+      else if (d >= 2) multiplier = 2;
+      else multiplier = 1;
+      
+      niceDist = pow10 * multiplier;
+    }
+    
+    const text = niceDist < 1000 ? niceDist + ' m' : (niceDist / 1000) + ' km';
+    const ratio = dist > 0 ? niceDist / dist : 0;
+    setScaleSize(maxWidth * ratio);
+    setScaleText(text);
+  }, [map]);
+  
+  useEffect(() => {
+    updateScale();
+    map.on('move', updateScale);
+    return () => { map.off('move', updateScale); };
+  }, [map, updateScale]);
+  
+  return createPortal(
+    <>
+       {/* Horizontal Scale (Top) */}
+       <div 
+         className="absolute left-1/2 -translate-x-1/2 z-[2000] pointer-events-none flex flex-col items-center"
+         style={{ top: 'max(4.5rem, env(safe-area-inset-top) + 3rem)' }}
+       >
+          <div className="text-emerald-400 text-[10px] font-bold mb-0.5 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" style={{ textShadow: '0px 1px 3px rgba(0,0,0,1), 0px 0px 2px rgba(0,0,0,1)' }}>{scaleText}</div>
+          <div className="border-b-2 border-l-2 border-r-2 border-emerald-400 h-1.5 transition-all duration-100 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" style={{ width: scaleSize, backgroundColor: 'rgba(0,0,0,0.3)' }}></div>
+       </div>
+       
+       {/* Vertical Scale (Left) */}
+       <div className="absolute left-6 top-1/2 -translate-y-1/2 z-[2000] pointer-events-none flex items-center">
+          <div className="border-l-2 border-t-2 border-b-2 border-emerald-400 w-1.5 transition-all duration-100 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" style={{ height: scaleSize, backgroundColor: 'rgba(0,0,0,0.3)' }}></div>
+          <div className="text-emerald-400 text-[10px] font-bold ml-1 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', textShadow: '0px 1px 3px rgba(0,0,0,1), 0px 0px 2px rgba(0,0,0,1)' }}>{scaleText}</div>
+       </div>
+    </>,
+    map.getContainer()
+  );
+}
+
 function MapController({ panTo }: { panTo: LatLng | null }) {
   const map = useMap();
   useEffect(() => {
@@ -557,7 +640,7 @@ function SearchBar({ onSelect }: { onSelect: (h: EbirdHotspot) => void }) {
   }, []);
 
   return (
-    <div ref={wrapperRef} className="absolute top-6 left-6 z-[2000] w-80">
+    <div ref={wrapperRef} className="absolute top-[max(1.5rem,env(safe-area-inset-top))] left-4 right-4 sm:left-6 sm:right-auto z-[2000] sm:w-80">
       <div className="bg-[#25282c]/95 backdrop-blur shadow-2xl rounded-lg border border-white/10 flex items-center px-3 py-2 transition-colors focus-within:border-emerald-500/50">
          <Search className="w-5 h-5 text-white/50 mr-2 shrink-0" />
          <input 
@@ -760,7 +843,10 @@ export default function MapCanvas() {
       <SearchBar onSelect={handleSearchSelect} />
 
       {/* Brand Header Badge */}
-      <div className="absolute top-6 right-6 z-[2000] hidden sm:flex items-center gap-3 bg-[#25282c]/90 backdrop-blur-md px-3.5 py-2 rounded-lg border border-white/10 shadow-2xl pointer-events-auto">
+      <div 
+        className="absolute right-6 z-[2000] hidden sm:flex items-center gap-3 bg-[#25282c]/90 backdrop-blur-md px-3.5 py-2 rounded-lg border border-white/10 shadow-2xl pointer-events-auto"
+        style={{ top: 'max(1.5rem, env(safe-area-inset-top))' }}
+      >
         <div className="w-6 h-6 bg-emerald-500 rounded flex items-center justify-center">
           <Bird className="w-4 h-4 text-black" />
         </div>
@@ -787,6 +873,7 @@ export default function MapCanvas() {
         )}
 
         <MapController panTo={panToLocation} />
+        <CustomScales />
 
         <MapEvents 
           onMapClick={handleMapClick}
@@ -980,20 +1067,29 @@ export default function MapCanvas() {
       </MapContainer>
 
       {/* Floating Controls */}
-      <button 
-        onClick={() => setShowDrawer(true)}
-        className="absolute bottom-6 right-6 z-[2000] w-12 h-12 bg-[#25282c] border border-white/10 rounded overflow-hidden shadow-2xl flex items-center justify-center text-white/80 hover:bg-white/5 transition-all"
-      >
-        <List className="w-5 h-5" />
-      </button>
+      {!showDrawer && (
+        <button 
+          onClick={() => setShowDrawer(true)}
+          className="absolute right-4 sm:right-6 z-[2005] w-12 h-12 bg-[#25282c] border border-white/10 rounded-full sm:rounded overflow-hidden shadow-2xl flex items-center justify-center text-white/80 hover:text-white hover:bg-[#32363b] active:scale-95 transition-all select-none"
+          style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+          title="设置与数据管理"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
 
-      <button 
-        onClick={() => setShowLeftPanel(true)}
-        className="absolute bottom-6 left-6 z-[2000] px-4 h-12 bg-[#25282c] border border-white/10 rounded shadow-2xl flex items-center justify-center gap-2 text-white/80 hover:bg-white/5 hover:text-white transition-all font-bold text-sm"
-      >
-        <List className="w-4 h-4 text-emerald-400" />
-        鸟种 / 鸟点分析
-      </button>
+      {!showLeftPanel && (
+        <button 
+          onClick={() => setShowLeftPanel(true)}
+          className="absolute left-4 sm:left-6 z-[2005] px-4 h-12 bg-[#25282c] border border-white/10 rounded-full sm:rounded shadow-2xl flex items-center justify-center gap-2 text-white/80 hover:text-white hover:bg-[#32363b] active:scale-95 transition-all font-bold text-sm select-none"
+          style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+          title="鸟种 / 鸟点分析"
+        >
+          <List className="w-4 h-4 text-emerald-400" />
+          <span className="hidden sm:inline">鸟种 / 鸟点分析</span>
+          <span className="sm:hidden">分析</span>
+        </button>
+      )}
 
       {showDrawer && <Sidebar 
         onClose={() => setShowDrawer(false)} 
@@ -1145,7 +1241,7 @@ function Sidebar({
   };
 
   return (
-    <div className="absolute top-0 right-0 h-full w-80 bg-[#25282c]/95 backdrop-blur-xl shadow-2xl z-[2000] flex flex-col transform transition-transform border-l border-white/10">
+    <div className="absolute top-0 right-0 h-full w-full sm:w-80 bg-[#25282c] backdrop-blur-xl shadow-2xl z-[2000] flex flex-col transform transition-transform border-l border-white/10">
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -1664,7 +1760,7 @@ function LeftPanel({
   }, [selectedSpeciesCode, activeTab, speciesData, onHighlightLocations]);
 
   return (
-    <div className="absolute top-0 left-0 h-full w-96 bg-[#25282c]/95 backdrop-blur-xl shadow-2xl z-[2000] flex flex-col transform transition-transform border-r border-white/10">
+    <div className="absolute top-0 left-0 h-full w-full sm:w-96 bg-[#25282c] backdrop-blur-xl shadow-2xl z-[2000] flex flex-col transform transition-transform border-r border-white/10">
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
         <h2 className="text-lg font-bold tracking-tight text-emerald-400 flex items-center gap-2">
           <List className="w-5 h-5" />
