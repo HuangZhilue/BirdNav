@@ -13,11 +13,24 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
-          name: 'Birding Navigator',
-          short_name: 'BirdNav',
-          description: 'A map application for bird watchers to mark locations and plan routes.',
+          name: '观鸟导航',
+          short_name: '观鸟导航',
+          description: '一款基于高德地图和 eBird 数据的观鸟热点探索与路线规划应用',
           theme_color: '#ffffff',
-          icons: []
+          background_color: '#ffffff',
+          display: 'standalone',
+          icons: [
+            {
+              src: 'icon.jpg',
+              sizes: '512x512',
+              type: 'image/jpeg'
+            },
+            {
+              src: 'icon.jpg',
+              sizes: '192x192',
+              type: 'image/jpeg'
+            }
+          ]
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
