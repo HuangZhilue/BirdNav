@@ -6,6 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
   return {
+    base: './',
     plugins: [
       react(), 
       tailwindcss(),
@@ -15,33 +16,25 @@ export default defineConfig(() => {
           name: '观鸟导航',
           short_name: '观鸟导航',
           description: '一款基于高德地图和 eBird 数据的观鸟热点探索与路线规划应用',
-          lang: 'zh-CN',
           theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone',
-          start_url: '/',
-          scope: '/',
+          start_url: '.',
           icons: [
             {
-              src: 'icons/pwa-192x192.png',
+              src: 'icon.jpg',
+              sizes: '512x512',
+              type: 'image/jpeg'
+            },
+            {
+              src: 'icon.jpg',
               sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: 'icons/pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png'
-            },
-            {
-              src: 'icons/pwa-512x512-maskable.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable'
+              type: 'image/jpeg'
             }
           ]
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,webmanifest}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/api\.ebird\.org\/.*/i,
