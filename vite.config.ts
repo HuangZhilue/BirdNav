@@ -5,14 +5,8 @@ import {defineConfig} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ command }) => {
-  const normalizeBase = (value: string | undefined) => {
-    if (!value || value === '/') return '/';
-    const trimmed = value.trim();
-    if (!trimmed) return '/';
-    const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-    return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`;
-  };
-  const appBase = normalizeBase(process.env.VITE_BASE_PATH);
+  const isBuild = command === 'build';
+  const appBase = isBuild ? '/BirdNav/' : '/';
 
   return {
     base: appBase,
