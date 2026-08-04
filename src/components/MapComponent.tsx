@@ -134,7 +134,132 @@ function MapEvents({ onMapClick, onMapChange }: { onMapClick: (latlng: L.LatLng)
   return null;
 }
 
-function RouteDisplay({ routePoints, onClear, uiPortalTarget }: { routePoints: SavedPoint[], onClear: () => void, uiPortalTarget: HTMLElement | null }) {
+function NavigationModal({ 
+  target, 
+  onClose 
+}: { 
+  target: { 
+    fromPoint?: SavedPoint | { name: string; location: LatLng }; 
+    toPoint: SavedPoint | { name: string; location: LatLng }; 
+  }; 
+  onClose: () => void; 
+}) {
+  const { fromPoint, toPoint } = target;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  const toGcj = wgs84ToGcj02(toPoint.location.lat, toPoint.location.lng);
+  const fromGcj = fromPoint ? wgs84ToGcj02(fromPoint.location.lat, fromPoint.location.lng) : null;
+
+  const fromName = fromPoint?.name || '起点';
+  const toName = toPoint.name;
+
+  const apps = [
+    {
+      name: '高德地图',
+      url: fromGcj 
+        ? `amapuri://route/plan/?sourceApplication=BirdNav&sname=${encodeURIComponent(fromName)}&slat=${fromGcj.lat}&slon=${fromGcj.lng}&dlat=${toGcj.lat}&dlon=${toGcj.lng}&dname=${encodeURIComponent(toName)}&dev=0&m=0&t=0`
+        : `amapuri://route/plan/?sourceApplication=BirdNav&dlat=${toGcj.lat}&dlon=${toGcj.lng}&dname=${encodeURIComponent(toName)}&dev=0&m=0&t=0`
+    },
+    {
+      name: '百度地图',
+      url: fromGcj
+        ? `baidumap://map/direction?origin=name:${encodeURIComponent(fromName)}|latlng:${fromGcj.lat},${fromGcj.lng}&destination=name:${encodeURIComponent(toName)}|latlng:${toGcj.lat},${toGcj.lng}&coord_type=gcj02&mode=driving`
+        : `baidumap://map/direction?destination=name:${encodeURIComponent(toName)}|latlng:${toGcj.lat},${toGcj.lng}&coord_type=gcj02&mode=driving`
+    },
+    {
+      name: '腾讯地图',
+      url: fromGcj
+        ? `qqmap://map/routeplan?type=drive&from=${encodeURIComponent(fromName)}&fromcoord=${fromGcj.lat},${fromGcj.lng}&to=${encodeURIComponent(toName)}&tocoord=${toGcj.lat},${toGcj.lng}&referer=BirdNav`
+        : `qqmap://map/routeplan?type=drive&to=${encodeURIComponent(toName)}&tocoord=${toGcj.lat},${toGcj.lng}&referer=BirdNav`
+    },
+    {
+      name: 'Google Map',
+      url: fromPoint
+        ? `https://www.google.com/maps/dir/?api=1&origin=${fromPoint.location.lat},${fromPoint.location.lng}&destination=${toPoint.location.lat},${toPoint.location.lng}&travelmode=driving`
+        : `https://www.google.com/maps/dir/?api=1&destination=${toPoint.location.lat},${toPoint.location.lng}&travelmode=driving`
+    }
+  ];
+
+  let fallbackUrl = fromPoint
+    ? `https://www.google.com/maps/dir/?api=1&origin=${fromPoint.location.lat},${fromPoint.location.lng}&destination=${toPoint.location.lat},${toPoint.location.lng}&travelmode=driving`
+    : `https://www.google.com/maps/dir/?api=1&destination=${toPoint.location.lat},${toPoint.location.lng}&travelmode=driving`;
+
+  if (isIOS) {
+    fallbackUrl = fromPoint
+      ? `http://maps.apple.com/?saddr=${fromPoint.location.lat},${fromPoint.location.lng}&daddr=${toPoint.location.lat},${toPoint.location.lng}&dirflg=d`
+      : `http://maps.apple.com/?daddr=${toPoint.location.lat},${toPoint.location.lng}&dirflg=d`;
+  }
+
+  return (
+    <div 
+      className="fixed inset-0 z-[2010] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs select-none"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-[#25282c] border border-white/10 shadow-2xl rounded-2xl p-5 w-full max-w-sm text-white relative animate-in fade-in zoom-in-95 pointer-events-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <Navigation2 className="w-4 h-4" />
+            </div>
+            <h3 className="font-bold text-sm text-white">选择导航软件</h3>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {fromPoint ? (
+          <div className="bg-black/30 border border-white/5 p-3 rounded-xl mb-4 text-xs space-y-1.5">
+            <div className="flex items-center gap-2 text-white/90 truncate">
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">起点</span>
+              <span className="truncate">{fromName}</span>
+            </div>
+            <div className="flex items-center gap-2 text-white/90 truncate">
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">终点</span>
+              <span className="truncate">{toName}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-black/30 border border-white/5 p-3 rounded-xl mb-4 text-xs flex items-center gap-2 text-white/90">
+            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">目的地</span>
+            <span className="truncate font-bold">{toName}</span>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2.5">
+          {apps.map((app) => (
+            <a
+              key={app.name}
+              href={app.url}
+              onClick={onClose}
+              className="w-full py-2.5 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-md active:scale-[0.98]"
+            >
+              <Navigation className="w-4 h-4" />
+              <span>{app.name}</span>
+            </a>
+          ))}
+          <a
+            href={fallbackUrl}
+            onClick={onClose}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-2.5 px-4 bg-white/10 hover:bg-white/20 text-white/90 font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 mt-1 border border-white/10 active:scale-[0.98]"
+          >
+            <span>系统默认 / 浏览器导航</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RouteDisplay({ routePoints, onClear, uiPortalTarget, onOpenNavModal }: { routePoints: SavedPoint[], onClear: () => void, uiPortalTarget: HTMLElement | null, onOpenNavModal: (from: SavedPoint, to: SavedPoint) => void }) {
   const map = useMap();
   const { isCalculatingRoute, setIsCalculatingRoute } = useStore();
   const [routeLine, setRouteLine] = useState<[number, number][]>([]);
@@ -149,45 +274,6 @@ function RouteDisplay({ routePoints, onClear, uiPortalTarget }: { routePoints: S
       L.DomEvent.disableClickPropagation(containerRef.current);
     }
   });
-
-  const openNavigationApp = (fromPoint: SavedPoint, toPoint: SavedPoint) => {
-    // Determine OS and provide links
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isAndroid = /android/i.test(navigator.userAgent);
-    
-    // For WGS84, direct open using system defaults or specific apps.
-    // The maps apps usually take GCJ02 or WGS84 depending on the parameter.
-    // To be safe, we convert to GCJ02 since most map apps in China use GCJ02.
-    const to = wgs84ToGcj02(toPoint.location.lat, toPoint.location.lng);
-    const from = wgs84ToGcj02(fromPoint.location.lat, fromPoint.location.lng);
-
-    const apps = [
-      { name: '高德地图', url: `amapuri://route/plan/?sourceApplication=BirdNav&sname=${encodeURIComponent(fromPoint.name)}&slat=${from.lat}&slon=${from.lng}&dlat=${to.lat}&dlon=${to.lng}&dname=${encodeURIComponent(toPoint.name)}&dev=0&m=0&t=0` },
-      { name: '百度地图', url: `baidumap://map/direction?origin=name:${encodeURIComponent(fromPoint.name)}|latlng:${from.lat},${from.lng}&destination=name:${encodeURIComponent(toPoint.name)}|latlng:${to.lat},${to.lng}&coord_type=gcj02&mode=driving` },
-      { name: '腾讯地图', url: `qqmap://map/routeplan?type=drive&from=${encodeURIComponent(fromPoint.name)}&fromcoord=${from.lat},${from.lng}&to=${encodeURIComponent(toPoint.name)}&tocoord=${to.lat},${to.lng}&referer=BirdNav` },
-      { name: 'Google Map', url: `https://www.google.com/maps/dir/?api=1&origin=${fromPoint.location.lat},${fromPoint.location.lng}&destination=${toPoint.location.lat},${toPoint.location.lng}&travelmode=driving` },
-    ];
-
-    let fallbackUrl = `https://www.google.com/maps/dir/?api=1&origin=${fromPoint.location.lat},${fromPoint.location.lng}&destination=${toPoint.location.lat},${toPoint.location.lng}&travelmode=driving`;
-    if (isIOS) {
-      fallbackUrl = `http://maps.apple.com/?saddr=${fromPoint.location.lat},${fromPoint.location.lng}&daddr=${toPoint.location.lat},${toPoint.location.lng}&dirflg=d`;
-    }
-
-    const popupHtml = `
-      <div style="font-family: sans-serif; text-align: center;">
-        <h4 style="margin:0 0 12px 0; color: #333; font-size: 14px;">选择导航软件</h4>
-        <div style="display:flex; flex-direction:column; gap: 8px;">
-          ${apps.map(app => `<a href="${app.url}" style="display:block; padding: 10px; background: #10b981; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">${app.name}</a>`).join('')}
-          <a href="${fallbackUrl}" style="display:block; padding: 10px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">系统默认 / 浏览器导航</a>
-        </div>
-      </div>
-    `;
-
-    const popup = L.popup({ minWidth: 200 })
-      .setLatLng([to.lat, to.lng])
-      .setContent(popupHtml)
-      .openOn(map);
-  };
 
   useEffect(() => {
     if (routePoints.length < 2) {
@@ -335,9 +421,9 @@ function RouteDisplay({ routePoints, onClear, uiPortalTarget }: { routePoints: S
                             <span className="w-1 h-1 rounded-full bg-emerald-400/50"></span>
                             <span>{formatDuration(leg.duration)}</span>
                             <button
-                              onClick={() => openNavigationApp(routePoints[i], routePoints[i + 1])}
+                              onClick={() => onOpenNavModal(routePoints[i], routePoints[i + 1])}
                               className="ml-2 bg-emerald-500 hover:bg-emerald-400 text-black p-1 rounded transition-colors shadow-sm"
-                              title="导航"
+                              title="导航软件"
                             >
                               <Navigation2 className="w-3.5 h-3.5" />
                             </button>
@@ -710,6 +796,10 @@ export default function MapCanvas() {
   const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>([]);
   const [panToLocation, setPanToLocation] = useState<LatLng | null>(null);
   const [highlightedLocIds, setHighlightedLocIds] = useState<Set<string> | null>(null);
+  const [navModalTarget, setNavModalTarget] = useState<{
+    fromPoint?: SavedPoint | { name: string; location: LatLng };
+    toPoint: SavedPoint | { name: string; location: LatLng };
+  } | null>(null);
 
   const handleToggleRouteSelection = (id: string) => {
     setSelectedRouteIds(prev => 
@@ -900,7 +990,7 @@ export default function MapCanvas() {
         <RouteDisplay uiPortalTarget={uiPortalTarget} routePoints={routePoints} onClear={() => {
           setRoutePoints([]);
           setSelectedRouteIds([]);
-        }} />
+        }} onOpenNavModal={(fromPoint, toPoint) => setNavModalTarget({ fromPoint, toPoint })} />
         
         <BirdHotspots 
           savedEbirdLocIds={savedEbirdLocIds}
@@ -986,15 +1076,24 @@ export default function MapCanvas() {
               <div className="p-1 min-w-[200px]">
                 <h3 className="font-bold text-black mb-1">{selectedSavedCustomPoint.name}</h3>
                 <p className="text-[10px] font-bold text-slate-500 mb-3">自定义点位</p>
-                <button 
-                  onClick={() => {
-                    removeSavedPoint(selectedSavedCustomPoint.id);
-                    setSelectedSavedCustomPoint(null);
-                  }}
-                  className="w-full py-1.5 px-3 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white rounded text-xs font-bold transition-colors"
-                >
-                  移除点位
-                </button>
+                <div className="flex flex-col gap-1.5">
+                  <button 
+                    onClick={() => setNavModalTarget({ toPoint: selectedSavedCustomPoint })}
+                    className="w-full py-1.5 px-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Navigation2 className="w-3.5 h-3.5" />
+                    <span>导航路线</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      removeSavedPoint(selectedSavedCustomPoint.id);
+                      setSelectedSavedCustomPoint(null);
+                    }}
+                    className="w-full py-1.5 px-3 bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white rounded text-xs font-bold transition-colors"
+                  >
+                    移除点位
+                  </button>
+                </div>
               </div>
             </Popup>
           );
@@ -1061,17 +1160,26 @@ export default function MapCanvas() {
                   )}
                   <p>最后记录: <span className="font-bold text-slate-800">{selectedHotspot.latestObsDt ?? '无'}</span></p>
                 </div>
-                <button 
-                  onClick={handleToggleSaveHotspot}
-                  className={cn(
-                    "w-full py-1.5 px-3 rounded text-xs font-bold transition-colors",
-                    isSaved 
-                      ? "bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white" 
-                      : "bg-emerald-500 hover:bg-emerald-600 text-white"
-                  )}
-                >
-                  {isSaved ? '移除点位' : '保存到我的点位'}
-                </button>
+                <div className="flex flex-col gap-1.5">
+                  <button 
+                    onClick={() => setNavModalTarget({ toPoint: { name: selectedHotspot.locName, location: { lat: selectedHotspot.lat, lng: selectedHotspot.lng } } })}
+                    className="w-full py-1.5 px-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Navigation2 className="w-3.5 h-3.5" />
+                    <span>导航路线</span>
+                  </button>
+                  <button 
+                    onClick={handleToggleSaveHotspot}
+                    className={cn(
+                      "w-full py-1.5 px-3 rounded text-xs font-bold transition-colors",
+                      isSaved 
+                        ? "bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white" 
+                        : "bg-slate-200 hover:bg-slate-300 text-slate-800"
+                    )}
+                  >
+                    {isSaved ? '移除点位' : '保存到我的点位'}
+                  </button>
+                </div>
               </div>
             </Popup>
           );
@@ -1140,6 +1248,13 @@ export default function MapCanvas() {
         fetchHotspotObs={fetchHotspotObs}
         onPanTo={(lat, lng) => setPanToLocation({ lat, lng })}
       />}
+
+      {navModalTarget && (
+        <NavigationModal 
+          target={navModalTarget} 
+          onClose={() => setNavModalTarget(null)} 
+        />
+      )}
     </div>
   );
 }
