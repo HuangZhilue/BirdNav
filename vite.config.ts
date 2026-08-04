@@ -12,6 +12,7 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'maskable-icon-512x512.png'],
         manifest: {
           name: '观鸟导航',
           short_name: '观鸟导航',
@@ -19,17 +20,27 @@ export default defineConfig(() => {
           theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone',
+          orientation: 'portrait',
           start_url: '.',
+          scope: '.',
           icons: [
             {
-              src: 'icon.jpg',
-              sizes: '512x512',
-              type: 'image/jpeg'
+              src: 'pwa-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any'
             },
             {
-              src: 'icon.jpg',
-              sizes: '192x192',
-              type: 'image/jpeg'
+              src: 'pwa-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: 'maskable-icon-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable'
             }
           ]
         },
