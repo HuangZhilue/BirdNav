@@ -4,12 +4,8 @@ import path from 'path';
 import {defineConfig} from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(({ command }) => {
-  const isBuild = command === 'build';
-  const appBase = isBuild ? '/BirdNav/' : '/';
-
+export default defineConfig(() => {
   return {
-    base: appBase,
     plugins: [
       react(), 
       tailwindcss(),
@@ -23,8 +19,8 @@ export default defineConfig(({ command }) => {
           theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone',
-          start_url: appBase,
-          scope: appBase,
+          start_url: '/',
+          scope: '/',
           icons: [
             {
               src: 'icons/pwa-192x192.png',
