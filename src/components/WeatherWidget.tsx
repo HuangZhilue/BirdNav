@@ -90,7 +90,7 @@ export default function WeatherWidget({ lat, lng }: WeatherWidgetProps) {
 
   if (!data && loading) {
     return (
-      <div className="absolute top-[max(4.5rem,env(safe-area-inset-top,0px)+3.5rem)] sm:top-[max(1.5rem,env(safe-area-inset-top,0px))] left-1/2 -translate-x-1/2 sm:left-auto sm:right-[260px] sm:translate-x-0 z-[500] bg-[#25282c]/90 backdrop-blur-md px-4 py-2 rounded-lg border border-white/10 shadow-2xl flex items-center justify-center">
+      <div className="absolute top-[max(4.5rem,env(safe-area-inset-top,0px)+3.5rem)] sm:top-[max(1.5rem,env(safe-area-inset-top,0px))] left-1/2 -translate-x-1/2 sm:left-auto sm:right-65 sm:translate-x-0 z-500 bg-[#25282c]/90 backdrop-blur-md px-4 py-2 rounded-lg border border-white/10 shadow-2xl flex items-center justify-center">
         <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
       </div>
     );
@@ -105,7 +105,7 @@ export default function WeatherWidget({ lat, lng }: WeatherWidgetProps) {
   return (
     <div 
       ref={wrapperRef}
-      className="absolute top-[max(4.5rem,env(safe-area-inset-top,0px)+3.5rem)] sm:top-[max(1.5rem,env(safe-area-inset-top,0px))] left-1/2 -translate-x-1/2 sm:left-auto sm:right-60 sm:translate-x-0 z-[500] flex flex-col gap-2 items-center sm:items-end pointer-events-none"
+      className="absolute top-[max(4.5rem,env(safe-area-inset-top,0px)+3.5rem)] sm:top-[max(1.5rem,env(safe-area-inset-top,0px))] left-1/2 -translate-x-1/2 sm:left-auto sm:right-60 sm:translate-x-0 z-500 flex flex-col gap-2 items-center sm:items-end pointer-events-none"
     >
       <div 
         onClick={() => setExpanded(!expanded)}
@@ -156,7 +156,7 @@ export default function WeatherWidget({ lat, lng }: WeatherWidgetProps) {
                   
                   <div className="flex items-center gap-2 w-24 justify-end font-mono">
                     <span className="text-white/50 text-xs">{Math.round(daily.temperature_2m_min[index])}°</span>
-                    <div className="w-8 h-1 rounded-full bg-gradient-to-r from-blue-500 to-orange-500 opacity-70"></div>
+                    <div className="w-8 h-1 rounded-full bg-linear-to-r from-blue-500 to-orange-500 opacity-70"></div>
                     <span className="text-white font-bold text-xs">{Math.round(daily.temperature_2m_max[index])}°</span>
                   </div>
                 </div>

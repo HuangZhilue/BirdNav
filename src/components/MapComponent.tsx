@@ -192,7 +192,7 @@ function NavigationModal({
 
   return (
     <div 
-      className="fixed inset-0 z-[2010] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs select-none"
+      className="fixed inset-0 z-2010 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs select-none"
       onClick={onClose}
     >
       <div 
@@ -344,7 +344,7 @@ function RouteDisplay({ routePoints, onClear, uiPortalTarget, onOpenNavModal }: 
       {uiPortalTarget && createPortal(
         <div 
           ref={containerRef}
-          className="absolute inset-x-4 sm:inset-auto sm:left-6 z-[2001] bg-[#25282c]/95 border border-white/10 backdrop-blur px-4 py-3.5 shadow-2xl rounded-lg flex flex-col items-center gap-3 sm:min-w-[310px] sm:max-w-[380px] overflow-y-auto pointer-events-auto"
+          className="absolute inset-x-4 sm:inset-auto sm:left-6 z-2001 bg-[#25282c]/95 border border-white/10 backdrop-blur px-4 py-3.5 shadow-2xl rounded-lg flex flex-col items-center gap-3 sm:min-w-77.5 sm:max-w-95 overflow-y-auto pointer-events-auto"
           style={{ 
             top: 'max(5rem, env(safe-area-inset-top,0px) + 3.5rem)',
             maxHeight: 'calc(100dvh - max(5rem, env(safe-area-inset-top,0px) + 3.5rem) - max(1.5rem, env(safe-area-inset-bottom,0px)) - 4rem)'
@@ -401,7 +401,7 @@ function RouteDisplay({ routePoints, onClear, uiPortalTarget, onOpenNavModal }: 
                         className="flex flex-col gap-2 bg-black/30 border border-white/5 hover:border-white/10 p-2.5 rounded transition-colors"
                       >
                         {/* 第一块：“地点A -> 地点B”的名称指示 */}
-                        <div className="text-xs font-bold text-white/90 leading-relaxed break-words flex items-center flex-wrap gap-1.5">
+                        <div className="text-xs font-bold text-white/90 leading-relaxed wrap-break-word flex items-center flex-wrap gap-1.5">
                           <span className="text-emerald-400 font-normal text-[10px] bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded shrink-0">
                             {i + 1}
                           </span>
@@ -499,7 +499,7 @@ function CustomPointForm({ location, onSave }: { location: LatLng, onSave: (name
   const [name, setName] = useState(`自定义位置 ${savedPoints.length + 1}`);
 
   return (
-    <div className="p-2 min-w-[180px]">
+    <div className="p-2 min-w-45">
       <h3 className="text-xs font-bold text-black mb-2">添加点位</h3>
       <input 
         type="text" 
@@ -672,7 +672,7 @@ function CustomScales() {
     <>
        {/* Horizontal Scale (Top) */}
        <div 
-         className="absolute left-1/2 -translate-x-1/2 z-[2000] pointer-events-none flex flex-col items-center"
+         className="absolute left-1/2 -translate-x-1/2 z-2000 pointer-events-none flex flex-col items-center"
          style={{ top: 'max(4.5rem, env(safe-area-inset-top,0px) + 3rem)' }}
        >
           <div className="text-emerald-400 text-[10px] font-bold mb-0.5 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" style={{ textShadow: '0px 1px 3px rgba(0,0,0,1), 0px 0px 2px rgba(0,0,0,1)' }}>{scaleText}</div>
@@ -680,7 +680,7 @@ function CustomScales() {
        </div>
        
        {/* Vertical Scale (Left) */}
-       <div className="absolute left-6 top-1/2 -translate-y-1/2 z-[2000] pointer-events-none flex items-center">
+      <div className="absolute left-6 top-1/2 -translate-y-1/2 z-2000 pointer-events-none flex items-center">
           <div className="border-l-2 border-t-2 border-b-2 border-emerald-400 w-1.5 transition-all duration-100 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" style={{ height: scaleSize, backgroundColor: 'rgba(0,0,0,0.3)' }}></div>
           <div className="text-emerald-400 text-[10px] font-bold ml-1 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', textShadow: '0px 1px 3px rgba(0,0,0,1), 0px 0px 2px rgba(0,0,0,1)' }}>{scaleText}</div>
        </div>
@@ -730,7 +730,7 @@ function SearchBar({ onSelect }: { onSelect: (h: EbirdHotspot) => void }) {
   }, []);
 
   return (
-    <div ref={wrapperRef} className="absolute top-[max(1.5rem,env(safe-area-inset-top,0px))] left-4 right-4 sm:left-6 sm:right-auto z-[2000] sm:w-80">
+    <div ref={wrapperRef} className="absolute top-[max(1.5rem,env(safe-area-inset-top,0px))] left-4 right-4 sm:left-6 sm:right-auto z-2000 sm:w-80">
       <div className="bg-[#25282c]/95 backdrop-blur shadow-2xl rounded-lg border border-white/10 flex items-center px-3 py-2 transition-colors focus-within:border-emerald-500/50">
          <Search className="w-5 h-5 text-white/50 mr-2 shrink-0" />
          <input 
@@ -911,7 +911,7 @@ export default function MapCanvas() {
   }, [savedPoints.some(p => p.type === 'my-location'), updateMyLocation]);
 
   const tileUrl = useMemo(() => {
-    if (mapLayer === 'satellite' || mapLayer === 'terrain') {
+    if (mapLayer === 'satellite') {
       return 'https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}';
     }
     return 'https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}';
@@ -941,11 +941,11 @@ export default function MapCanvas() {
       
       <WeatherWidget lat={mapCenter[0]} lng={mapCenter[1]} />
 
-      <div ref={setUiPortalTarget} className="absolute inset-0 pointer-events-none z-[1000]" />
+      <div ref={setUiPortalTarget} className="absolute inset-0 pointer-events-none z-1000" />
 
       {/* Brand Header Badge */}
       <div 
-        className="absolute right-6 z-[2000] hidden sm:flex items-center gap-3 bg-[#25282c]/90 backdrop-blur-md px-3.5 py-2 rounded-lg border border-white/10 shadow-2xl pointer-events-auto"
+        className="absolute right-6 z-2000 hidden sm:flex items-center gap-3 bg-[#25282c]/90 backdrop-blur-md px-3.5 py-2 rounded-lg border border-white/10 shadow-2xl pointer-events-auto"
         style={{ top: 'max(1.5rem, env(safe-area-inset-top,0px))' }}
       >
         <div className="w-6 h-6 bg-emerald-500 rounded flex items-center justify-center">
@@ -1073,7 +1073,7 @@ export default function MapCanvas() {
                 })
               }}
             >
-              <div className="p-1 min-w-[200px]">
+              <div className="p-1 min-w-50">
                 <h3 className="font-bold text-black mb-1">{selectedSavedCustomPoint.name}</h3>
                 <p className="text-[10px] font-bold text-slate-500 mb-3">自定义点位</p>
                 <div className="flex flex-col gap-1.5">
@@ -1150,7 +1150,7 @@ export default function MapCanvas() {
                 })
               }}
             >
-              <div className="p-1 min-w-[200px]">
+              <div className="p-1 min-w-50">
                 <h3 className="font-bold text-black mb-1">{selectedHotspot.locName}</h3>
                 <p className="text-[10px] font-bold text-slate-500 mb-2">eBird 热点</p>
                 <div className="text-[10px] text-slate-600 mb-3 space-y-1 bg-slate-100 p-2 rounded">
@@ -1190,7 +1190,7 @@ export default function MapCanvas() {
       {!showDrawer && (
         <button 
           onClick={() => setShowDrawer(true)}
-          className="absolute right-4 sm:right-6 z-[2005] w-12 h-12 bg-[#25282c] border border-white/10 rounded-full sm:rounded overflow-hidden shadow-2xl flex items-center justify-center text-white/80 hover:text-white hover:bg-[#32363b] active:scale-95 transition-all select-none"
+          className="absolute right-4 sm:right-6 z-2005 w-12 h-12 bg-[#25282c] border border-white/10 rounded-full sm:rounded overflow-hidden shadow-2xl flex items-center justify-center text-white/80 hover:text-white hover:bg-[#32363b] active:scale-95 transition-all select-none"
           style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom,0px))' }}
           title="设置与数据管理"
         >
@@ -1201,7 +1201,7 @@ export default function MapCanvas() {
       {!showLeftPanel && (
         <button 
           onClick={() => setShowLeftPanel(true)}
-          className="absolute left-4 sm:left-6 z-[2005] px-4 h-12 bg-[#25282c] border border-white/10 rounded-full sm:rounded shadow-2xl flex items-center justify-center gap-2 text-white/80 hover:text-white hover:bg-[#32363b] active:scale-95 transition-all font-bold text-sm select-none"
+          className="absolute left-4 sm:left-6 z-2005 px-4 h-12 bg-[#25282c] border border-white/10 rounded-full sm:rounded shadow-2xl flex items-center justify-center gap-2 text-white/80 hover:text-white hover:bg-[#32363b] active:scale-95 transition-all font-bold text-sm select-none"
           style={{ bottom: 'max(1.5rem, env(safe-area-inset-bottom,0px))' }}
           title="鸟种 / 鸟点分析"
         >
@@ -1368,19 +1368,19 @@ function Sidebar({
   };
 
   return (
-    <div className="absolute top-0 right-0 h-full w-full sm:w-80 bg-[#25282c] backdrop-blur-xl shadow-2xl z-[2000] flex flex-col transform transition-transform border-l border-white/10">
+    <div className="absolute top-0 right-0 h-full w-full sm:w-80 bg-[#25282c] backdrop-blur-xl shadow-2xl z-2000 flex flex-col transform transition-transform border-l border-white/10">
       
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[3000] bg-emerald-500 text-black px-4 py-2 rounded shadow-xl text-xs font-bold whitespace-nowrap animate-in fade-in slide-in-from-top-4">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-3000 bg-emerald-500 text-black px-4 py-2 rounded shadow-xl text-xs font-bold whitespace-nowrap animate-in fade-in slide-in-from-top-4">
           {toastMessage}
         </div>
       )}
 
       {/* Confirm Clear Modal */}
       {showConfirmClear && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4">
-          <div className="bg-[#25282c] border border-white/10 rounded-xl p-5 shadow-2xl max-w-[280px]">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-3000 flex items-center justify-center p-4">
+          <div className="bg-[#25282c] border border-white/10 rounded-xl p-5 shadow-2xl max-w-70">
             <h4 className="text-red-400 font-bold mb-3 flex items-center gap-2">
               <span className="bg-red-500/20 p-1.5 rounded-full"><X className="w-4 h-4" /></span>
               确认清理
@@ -1887,7 +1887,7 @@ function LeftPanel({
   }, [selectedSpeciesCode, activeTab, speciesData, onHighlightLocations]);
 
   return (
-    <div className="absolute top-0 left-0 h-full w-full sm:w-96 bg-[#25282c] backdrop-blur-xl shadow-2xl z-[2000] flex flex-col transform transition-transform border-r border-white/10">
+    <div className="absolute top-0 left-0 h-full w-full sm:w-96 bg-[#25282c] backdrop-blur-xl shadow-2xl z-2000 flex flex-col transform transition-transform border-r border-white/10">
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
         <h2 className="text-lg font-bold tracking-tight text-emerald-400 flex items-center gap-2">
           <List className="w-5 h-5" />
