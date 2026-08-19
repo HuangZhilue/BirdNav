@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, createContext, useContext, ReactNode } from 'react';
 import { get, set } from 'idb-keyval';
 import { SavedPoint, MapLayer, EbirdHotspot, EbirdObservation } from '../types';
+import { detectCurrentProvinceCode } from '../utils/geolocation';
 
 interface StoreState {
   savedPoints: SavedPoint[];
@@ -29,6 +30,8 @@ interface StoreState {
   isLoaded: boolean;
   isCalculatingRoute: boolean;
   setIsCalculatingRoute: (val: boolean) => void;
+  selectedProvince: string;
+  setSelectedProvince: (code: string) => void;
 }
 
 const StoreContext = createContext<StoreState | null>(null);
@@ -45,6 +48,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [showSavedHotspotsOnly, setShowSavedHotspotsOnlyState] = useState<boolean>(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState<boolean>(false);
+  const [selectedProvince, setSelectedProvinceState] = useState<string>('CN-11');
+  const provinceManuallySetRef = useRef(false);
 
   useEffect(() => {
     const loadState = async () => {
@@ -70,6 +75,23 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       setIsLoaded(true);
     };
     loadState();
+  }, []);
+
+  // Auto-detect the user's current province (GPS if already granted, else IP-based) and
+  // pre-select it in the province dropdown, unless the user has already picked one manually.
+  useEffect(() => {
+    let cancelled = false;
+    detectCurrentProvinceCode().then(code => {
+      if (!cancelled && code && !provinceManuallySetRef.current) {
+        setSelectedProvinceState(code);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const setSelectedProvince = useCallback((code: string) => {
+    provinceManuallySetRef.current = true;
+    setSelectedProvinceState(code);
   }, []);
 
   const addSavedPoint = useCallback((point: Omit<SavedPoint, 'id'>) => {
@@ -217,7 +239,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       hotspotFilterDays, setHotspotFilterDays,
       showSavedHotspotsOnly, setShowSavedHotspotsOnly,
       isLoaded,
-      isCalculatingRoute, setIsCalculatingRoute
+      isCalculatingRoute, setIsCalculatingRoute,
+      selectedProvince, setSelectedProvince
     }}>
       {children}
     </StoreContext.Provider>
