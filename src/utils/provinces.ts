@@ -30,9 +30,9 @@ export const CHINA_PROVINCES = [
   { code: 'CN-63', name: '青海' },
   { code: 'CN-64', name: '宁夏' },
   { code: 'CN-65', name: '新疆' },
-  { code: 'CN-71', name: '台湾' },
-  { code: 'CN-91', name: '香港' },
-  { code: 'CN-92', name: '澳门' }
+  { code: 'TW', name: '台湾' },
+  { code: 'HK', name: '香港' },
+  { code: 'MO', name: '澳门' }
 ];
 
 // Approximate center (WGS84) + zoom level used to fly the map to a province once it is selected.
@@ -68,7 +68,7 @@ export const PROVINCE_VIEWS: Record<string, { lat: number; lng: number; zoom: nu
   'CN-63': { lat: 35.5, lng: 95.0, zoom: 5 },         // 青海
   'CN-64': { lat: 37.3, lng: 106.0, zoom: 7 },        // 宁夏
   'CN-65': { lat: 41.5, lng: 85.0, zoom: 5 },         // 新疆
-  'CN-71': { lat: 23.7, lng: 121.0, zoom: 8 },        // 台湾
-  'CN-91': { lat: 22.3, lng: 114.17, zoom: 10 },      // 香港
-  'CN-92': { lat: 22.2, lng: 113.55, zoom: 12 },      // 澳门
+  'TW': { lat: 23.7, lng: 121.0, zoom: 8 },           // 台湾
+  'HK': { lat: 22.3, lng: 114.17, zoom: 10 },         // 香港
+  'MO': { lat: 22.2, lng: 113.55, zoom: 12 },         // 澳门
 };
