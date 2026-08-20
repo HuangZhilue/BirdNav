@@ -10,6 +10,7 @@ import { Bird, MapPin, Navigation, Map as MapIcon, TrafficCone, Compass, List, X
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { wgs84ToGcj02, gcj02ToWgs84 } from '../utils/coords';
+import { CHINA_PROVINCES, PROVINCE_VIEWS } from '../utils/provinces';
 import WeatherWidget from './WeatherWidget';
 import {
   DndContext,
@@ -61,43 +62,6 @@ const icons = {
   route: createCustomIcon(<MapPin className="w-6 h-6" fill="currentColor" />, 'text-orange-500'),
   mylocation: createCustomIcon(<User className="w-6 h-6" fill="currentColor" />, 'text-purple-500'),
 };
-
-const CHINA_PROVINCES = [
-  { code: 'CN-11', name: '北京' },
-  { code: 'CN-12', name: '天津' },
-  { code: 'CN-13', name: '河北' },
-  { code: 'CN-14', name: '山西' },
-  { code: 'CN-15', name: '内蒙古' },
-  { code: 'CN-21', name: '辽宁' },
-  { code: 'CN-22', name: '吉林' },
-  { code: 'CN-23', name: '黑龙江' },
-  { code: 'CN-31', name: '上海' },
-  { code: 'CN-32', name: '江苏' },
-  { code: 'CN-33', name: '浙江' },
-  { code: 'CN-34', name: '安徽' },
-  { code: 'CN-35', name: '福建' },
-  { code: 'CN-36', name: '江西' },
-  { code: 'CN-37', name: '山东' },
-  { code: 'CN-41', name: '河南' },
-  { code: 'CN-42', name: '湖北' },
-  { code: 'CN-43', name: '湖南' },
-  { code: 'CN-44', name: '广东' },
-  { code: 'CN-45', name: '广西' },
-  { code: 'CN-46', name: '海南' },
-  { code: 'CN-50', name: '重庆' },
-  { code: 'CN-51', name: '四川' },
-  { code: 'CN-52', name: '贵州' },
-  { code: 'CN-53', name: '云南' },
-  { code: 'CN-54', name: '西藏' },
-  { code: 'CN-61', name: '陕西' },
-  { code: 'CN-62', name: '甘肃' },
-  { code: 'CN-63', name: '青海' },
-  { code: 'CN-64', name: '宁夏' },
-  { code: 'CN-65', name: '新疆' },
-  { code: 'CN-71', name: '台湾' },
-  { code: 'CN-91', name: '香港' },
-  { code: 'CN-92', name: '澳门' }
-];
 
 const getHotspotColorCategory = (latestObsDt?: string) => {
   if (!latestObsDt) return 'grey';
@@ -689,12 +653,12 @@ function CustomScales() {
   );
 }
 
-function MapController({ panTo }: { panTo: LatLng | null }) {
+function MapController({ panTo }: { panTo: (LatLng & { zoom?: number }) | null }) {
   const map = useMap();
   useEffect(() => {
     if (panTo) {
       const gcj = wgs84ToGcj02(panTo.lat, panTo.lng);
-      map.flyTo([gcj.lat, gcj.lng], 14, { duration: 1.5 });
+      map.flyTo([gcj.lat, gcj.lng], panTo.zoom ?? 14, { duration: 1.5 });
     }
   }, [panTo, map]);
   return null;
@@ -785,7 +749,7 @@ function SearchBar({ onSelect }: { onSelect: (h: EbirdHotspot) => void }) {
 }
 
 export default function MapCanvas() {
-  const { mapLayer, addSavedPoint, removeSavedPoint, savedPoints, trafficEnabled, roadNetEnabled, cachedHotspots, setIsCalculatingRoute, updateMyLocation, cachedObservations, hotspotFilterDays, ebirdToken, updateCachedObservations } = useStore();
+  const { mapLayer, addSavedPoint, removeSavedPoint, savedPoints, trafficEnabled, roadNetEnabled, cachedHotspots, setIsCalculatingRoute, updateMyLocation, cachedObservations, hotspotFilterDays, ebirdToken, updateCachedObservations, selectedProvince } = useStore();
   const [uiPortalTarget, setUiPortalTarget] = useState<HTMLDivElement | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<LatLng | null>(null);
   const [selectedHotspot, setSelectedHotspot] = useState<EbirdHotspot | null>(null);
@@ -794,8 +758,22 @@ export default function MapCanvas() {
   const [showLeftPanel, setShowLeftPanel] = useState(false);
   const [routePoints, setRoutePoints] = useState<SavedPoint[]>([]);
   const [selectedRouteIds, setSelectedRouteIds] = useState<string[]>([]);
-  const [panToLocation, setPanToLocation] = useState<LatLng | null>(null);
+  const [panToLocation, setPanToLocation] = useState<(LatLng & { zoom?: number }) | null>(null);
   const [highlightedLocIds, setHighlightedLocIds] = useState<Set<string> | null>(null);
+
+  // Skip the very first render so the restored/default map view isn't immediately overridden
+  // before province auto-detection resolves; fly to the province on every later change.
+  const skipInitialProvinceFlyRef = useRef(true);
+  useEffect(() => {
+    if (skipInitialProvinceFlyRef.current) {
+      skipInitialProvinceFlyRef.current = false;
+      return;
+    }
+    const view = PROVINCE_VIEWS[selectedProvince];
+    if (view) {
+      setPanToLocation({ lat: view.lat, lng: view.lng, zoom: view.zoom });
+    }
+  }, [selectedProvince]);
   const [navModalTarget, setNavModalTarget] = useState<{
     fromPoint?: SavedPoint | { name: string; location: LatLng };
     toPoint: SavedPoint | { name: string; location: LatLng };
@@ -1277,13 +1255,13 @@ function Sidebar({
     savedPoints, removeSavedPoint, updateSavedPointName, hotspotFilterDays, setHotspotFilterDays, updateMyLocation,
     cachedHotspots, updateCachedHotspots, isCalculatingRoute,
     cachedObservations, updateCachedObservations, clearProvinceData,
-    showSavedHotspotsOnly, setShowSavedHotspotsOnly 
+    showSavedHotspotsOnly, setShowSavedHotspotsOnly,
+    selectedProvince, setSelectedProvince
   } = useStore();
   const [tokenInput, setTokenInput] = useState(ebirdToken);
   const [editingPointId, setEditingPointId] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
   
-  const [selectedProvince, setSelectedProvince] = useState('CN-11');
   const [isFetchingHotspots, setIsFetchingHotspots] = useState(false);
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
