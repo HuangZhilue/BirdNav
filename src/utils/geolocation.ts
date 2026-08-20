@@ -1,6 +1,7 @@
 import { CHINA_PROVINCES } from './provinces';
 
-// English/pinyin province name (normalized to lowercase letters) -> eBird subnational1 code.
+// English/pinyin province name (normalized to lowercase letters) -> eBird region code
+// (subnational1 for mainland provinces; HK/MO/TW are eBird top-level region codes).
 // Covers the common variants returned by IP geolocation / reverse-geocoding services.
 const ENGLISH_PROVINCE_ALIASES: Record<string, string> = {
   beijing: 'CN-11',
@@ -37,10 +38,10 @@ const ENGLISH_PROVINCE_ALIASES: Record<string, string> = {
   qinghai: 'CN-63',
   ningxia: 'CN-64',
   xinjiang: 'CN-65',
-  taiwan: 'CN-71',
-  hongkong: 'CN-91',
-  macau: 'CN-92',
-  macao: 'CN-92',
+  taiwan: 'TW',
+  hongkong: 'HK',
+  macau: 'MO',
+  macao: 'MO',
 };
 
 const normalize = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
